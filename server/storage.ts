@@ -81,10 +81,10 @@ export class MemStorage implements IStorage {
 
     // Add sample conversations
     const sampleConversations: Conversation[] = [
-      { id: 1, agentId: 1, tokens: 2500, cost: 0.025, createdAt: new Date("2024-12-15") },
-      { id: 2, agentId: 1, tokens: 1800, cost: 0.018, createdAt: new Date("2024-12-15") },
-      { id: 3, agentId: 2, tokens: 1200, cost: 0.0024, createdAt: new Date("2024-12-14") },
-      { id: 4, agentId: 2, tokens: 900, cost: 0.0018, createdAt: new Date("2024-12-14") },
+      { id: 1, agentId: 1, tokens: 2500, cost: "0.025", createdAt: new Date("2024-12-15") },
+      { id: 2, agentId: 1, tokens: 1800, cost: "0.018", createdAt: new Date("2024-12-15") },
+      { id: 3, agentId: 2, tokens: 1200, cost: "0.0024", createdAt: new Date("2024-12-14") },
+      { id: 4, agentId: 2, tokens: 900, cost: "0.0018", createdAt: new Date("2024-12-14") },
     ];
 
     sampleConversations.forEach(conv => {
@@ -111,6 +111,7 @@ export class MemStorage implements IStorage {
       id,
       status: 'draft',
       createdAt: new Date(),
+      businessDomain: insertAgent.businessDomain || null,
     };
     this.agents.set(id, agent);
     return agent;

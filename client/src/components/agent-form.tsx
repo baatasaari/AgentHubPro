@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -160,6 +160,7 @@ export default function AgentForm({ onFormChange, onAgentCreated }: AgentFormPro
                         type="url"
                         placeholder="https://yourbusiness.com"
                         {...field}
+                        value={field.value || ""}
                       />
                     </FormControl>
                     <FormMessage />
