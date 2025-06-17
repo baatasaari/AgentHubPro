@@ -9,6 +9,7 @@ export default function Navigation() {
   const navItems = [
     { path: "/", label: "Dashboard", active: location === "/" },
     { path: "/agents", label: "My Agents", active: location === "/agents" },
+    { path: "/analytics", label: "Analytics", active: location === "/analytics" },
     { path: "/billing", label: "Billing", active: location === "/billing" },
   ];
 
