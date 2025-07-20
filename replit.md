@@ -18,7 +18,8 @@ AgentHub is a comprehensive SaaS platform that enables businesses to create, cus
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js
 - **Language**: TypeScript with ES modules
-- **Storage**: In-memory storage with full CRUD operations
+- **Storage**: Dual storage system - BigQuery for production, in-memory for development
+- **Database**: Google BigQuery with automatic table creation and schema management
 - **API**: RESTful API with typed endpoints and validation
 - **Development**: TSX for TypeScript execution
 
@@ -68,10 +69,22 @@ AgentHub is a comprehensive SaaS platform that enables businesses to create, cus
 
 ## Database Schema & Data Management
 
+### Storage Architecture
+- **Dual Storage System**: Automatic detection between BigQuery (production) and in-memory (development)
+- **BigQuery Integration**: Google Cloud BigQuery with automatic table creation and schema management
+- **Environment-based Selection**: Uses BigQuery when `GOOGLE_CLOUD_PROJECT_ID` is set, otherwise falls back to memory storage
+- **Seamless Migration**: Same API interface regardless of storage backend
+
 ### Core Entities
 - **Agents**: Business info, AI configuration, interface settings, deployment status
 - **Conversations**: Usage metrics, token consumption, cost tracking, timestamps
 - **Sample Data**: Pre-loaded with realistic examples across industries
+- **Automatic Setup**: Tables and schemas created automatically on first run
+
+### BigQuery Schema
+- **agents table**: ID, business details, industry, AI model configuration, interface type, status, timestamps
+- **conversations table**: ID, agent reference, token usage, cost tracking, timestamps
+- **Parameterized Queries**: Secure SQL queries with parameter binding for data safety
 
 ### Industry Specialization
 - **12 Industry Templates**: Healthcare, Retail, Finance, Real Estate, Education, Hospitality, Legal, Automotive, Technology, Consulting, Fitness, Food & Beverage
@@ -148,4 +161,12 @@ Preferred communication style: Simple, everyday language for non-technical users
 - ✓ Sample data across 12 industry verticals
 - ✓ Real-time cost estimation and model comparison
 
-The platform is now a fully-featured SaaS solution ready for businesses to create and deploy specialized AI agents.
+### July 20, 2025 - BigQuery Database Migration
+- ✓ Implemented BigQuery storage adapter with same interface as memory storage
+- ✓ Automatic environment-based storage selection (BigQuery for production, memory for development)
+- ✓ Complete BigQuery integration with table creation, schema management, and sample data
+- ✓ Parameterized SQL queries for security and performance
+- ✓ Seamless migration without changing frontend or API code
+- ✓ Setup documentation for Google Cloud configuration
+
+The platform now supports enterprise-grade BigQuery storage while maintaining full backward compatibility with the existing codebase.
