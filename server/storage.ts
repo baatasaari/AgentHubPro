@@ -1,5 +1,6 @@
 import { agents, conversations, type Agent, type InsertAgent, type Conversation, type InsertConversation } from "@shared/schema";
 import { BigQuery } from '@google-cloud/bigquery';
+import { databaseConfig, isDatabaseConfigured, validateDatabaseConfig } from './config';
 
 export interface IStorage {
   // Agent operations
@@ -187,19 +188,32 @@ export class MemStorage implements IStorage {
 
 export class BigQueryStorage implements IStorage {
   private bigquery: BigQuery;
-  private dataset: string;
-  private agentsTable: string;
-  private conversationsTable: string;
+  private config: typeof databaseConfig;
 
   constructor() {
+    // Validate configuration before initializing
+    const configErrors = validateDatabaseConfig();
+    if (configErrors.length > 0) {
+      throw new Error(`BigQuery configuration errors: ${configErrors.join(', ')}`);
+    }
+
+    this.config = databaseConfig;
+    
     this.bigquery = new BigQuery({
-      projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-      keyFilename: process.env.GOOGLE_CLOUD_KEY_FILE, // Optional: path to service account key file
+      projectId: this.config.projectId,
+      keyFilename: this.config.keyFilename,
+      location: this.config.location,
     });
     
-    this.dataset = process.env.BIGQUERY_DATASET || 'agenthub';
-    this.agentsTable = 'agents';
-    this.conversationsTable = 'conversations';
+    if (this.config.logQueries) {
+      console.log('BigQuery configured with:', {
+        projectId: this.config.projectId,
+        dataset: this.config.dataset,
+        location: this.config.location,
+        agentsTable: this.config.agentsTable,
+        conversationsTable: this.config.conversationsTable,
+      });
+    }
     
     // Initialize tables and sample data
     this.initializeTables();
@@ -209,17 +223,19 @@ export class BigQueryStorage implements IStorage {
     try {
       // Create dataset if it doesn't exist
       const [datasets] = await this.bigquery.getDatasets();
-      const datasetExists = datasets.some(ds => ds.id === this.dataset);
+      const datasetExists = datasets.some(ds => ds.id === this.config.dataset);
       
       if (!datasetExists) {
-        await this.bigquery.createDataset(this.dataset);
-        console.log(`Created dataset: ${this.dataset}`);
+        await this.bigquery.createDataset(this.config.dataset, {
+          location: this.config.location,
+        });
+        console.log(`Created dataset: ${this.config.dataset}`);
       }
 
-      const dataset = this.bigquery.dataset(this.dataset);
+      const dataset = this.bigquery.dataset(this.config.dataset);
 
       // Create agents table if it doesn't exist
-      const agentsTableRef = dataset.table(this.agentsTable);
+      const agentsTableRef = dataset.table(this.config.agentsTable);
       const [agentsExists] = await agentsTableRef.exists();
       
       if (!agentsExists) {
@@ -236,14 +252,16 @@ export class BigQueryStorage implements IStorage {
             { name: 'createdAt', type: 'TIMESTAMP', mode: 'REQUIRED' },
           ],
         });
-        console.log(`Created table: ${this.agentsTable}`);
+        console.log(`Created table: ${this.config.agentsTable}`);
         
-        // Insert sample data
-        await this.insertSampleAgents();
+        // Insert sample data if enabled
+        if (this.config.enableSampleData) {
+          await this.insertSampleAgents();
+        }
       }
 
       // Create conversations table if it doesn't exist
-      const conversationsTableRef = dataset.table(this.conversationsTable);
+      const conversationsTableRef = dataset.table(this.config.conversationsTable);
       const [conversationsExists] = await conversationsTableRef.exists();
       
       if (!conversationsExists) {
@@ -256,10 +274,12 @@ export class BigQueryStorage implements IStorage {
             { name: 'createdAt', type: 'TIMESTAMP', mode: 'REQUIRED' },
           ],
         });
-        console.log(`Created table: ${this.conversationsTable}`);
+        console.log(`Created table: ${this.config.conversationsTable}`);
         
-        // Insert sample data
-        await this.insertSampleConversations();
+        // Insert sample data if enabled
+        if (this.config.enableSampleData) {
+          await this.insertSampleConversations();
+        }
       }
     } catch (error) {
       console.error('Error initializing BigQuery tables:', error);
@@ -303,7 +323,7 @@ export class BigQueryStorage implements IStorage {
       },
     ];
 
-    await this.bigquery.dataset(this.dataset).table(this.agentsTable).insert(sampleAgents);
+    await this.bigquery.dataset(this.config.dataset).table(this.config.agentsTable).insert(sampleAgents);
   }
 
   private async insertSampleConversations() {
@@ -314,25 +334,34 @@ export class BigQueryStorage implements IStorage {
       { id: 4, agentId: 2, tokens: 900, cost: "0.0018", createdAt: new Date("2024-12-14").toISOString() },
     ];
 
-    await this.bigquery.dataset(this.dataset).table(this.conversationsTable).insert(sampleConversations);
+    await this.bigquery.dataset(this.config.dataset).table(this.config.conversationsTable).insert(sampleConversations);
   }
 
   private async getNextId(tableName: string): Promise<number> {
-    const query = `SELECT MAX(id) as maxId FROM \`${this.dataset}.${tableName}\``;
-    const [rows] = await this.bigquery.query(query);
+    const query = `SELECT MAX(id) as maxId FROM \`${this.config.dataset}.${tableName}\``;
+    const options: any = { query };
+    
+    if (this.config.logQueries) {
+      console.log('BigQuery Query:', query);
+    }
+    
+    const [rows] = await this.bigquery.query(options);
     return (rows[0]?.maxId || 0) + 1;
   }
 
   async getAgent(id: number): Promise<Agent | undefined> {
     const query = `
-      SELECT * FROM \`${this.dataset}.${this.agentsTable}\`
+      SELECT * FROM \`${this.config.dataset}.${this.config.agentsTable}\`
       WHERE id = @id
     `;
     
-    const [rows] = await this.bigquery.query({
-      query,
-      params: { id },
-    });
+    const options: any = { query, params: { id } };
+    
+    if (this.config.logQueries) {
+      console.log('BigQuery Query:', query, 'Params:', { id });
+    }
+    
+    const [rows] = await this.bigquery.query(options);
 
     if (rows.length === 0) return undefined;
     
@@ -345,9 +374,13 @@ export class BigQueryStorage implements IStorage {
 
   async getAllAgents(): Promise<Agent[]> {
     const query = `
-      SELECT * FROM \`${this.dataset}.${this.agentsTable}\`
+      SELECT * FROM \`${this.config.dataset}.${this.config.agentsTable}\`
       ORDER BY createdAt DESC
     `;
+    
+    if (this.config.logQueries) {
+      console.log('BigQuery Query:', query);
+    }
     
     const [rows] = await this.bigquery.query(query);
     
@@ -358,7 +391,7 @@ export class BigQueryStorage implements IStorage {
   }
 
   async createAgent(insertAgent: InsertAgent): Promise<Agent> {
-    const id = await this.getNextId(this.agentsTable);
+    const id = await this.getNextId(this.config.agentsTable);
     const agent = {
       ...insertAgent,
       id,
@@ -367,7 +400,7 @@ export class BigQueryStorage implements IStorage {
       businessDomain: insertAgent.businessDomain || null,
     };
 
-    await this.bigquery.dataset(this.dataset).table(this.agentsTable).insert([agent]);
+    await this.bigquery.dataset(this.config.dataset).table(this.config.agentsTable).insert([agent]);
     
     return {
       ...agent,
@@ -384,15 +417,18 @@ export class BigQueryStorage implements IStorage {
       .join(', ');
 
     const query = `
-      UPDATE \`${this.dataset}.${this.agentsTable}\`
+      UPDATE \`${this.config.dataset}.${this.config.agentsTable}\`
       SET ${updateFields}
       WHERE id = @id
     `;
 
-    await this.bigquery.query({
-      query,
-      params: { id, ...updates },
-    });
+    const options = { query, params: { id, ...updates } };
+    
+    if (this.config.logQueries) {
+      console.log('BigQuery Query:', query, 'Params:', { id, ...updates });
+    }
+
+    await this.bigquery.query(options);
 
     return this.getAgent(id);
   }
@@ -403,29 +439,34 @@ export class BigQueryStorage implements IStorage {
 
   async deleteAgent(id: number): Promise<boolean> {
     const query = `
-      DELETE FROM \`${this.dataset}.${this.agentsTable}\`
+      DELETE FROM \`${this.config.dataset}.${this.config.agentsTable}\`
       WHERE id = @id
     `;
 
-    await this.bigquery.query({
-      query,
-      params: { id },
-    });
+    const options = { query, params: { id } };
+    
+    if (this.config.logQueries) {
+      console.log('BigQuery Query:', query, 'Params:', { id });
+    }
 
+    await this.bigquery.query(options);
     return true;
   }
 
   async getConversationsByAgent(agentId: number): Promise<Conversation[]> {
     const query = `
-      SELECT * FROM \`${this.dataset}.${this.conversationsTable}\`
+      SELECT * FROM \`${this.config.dataset}.${this.config.conversationsTable}\`
       WHERE agentId = @agentId
       ORDER BY createdAt DESC
     `;
     
-    const [rows] = await this.bigquery.query({
-      query,
-      params: { agentId },
-    });
+    const options = { query, params: { agentId } };
+    
+    if (this.config.logQueries) {
+      console.log('BigQuery Query:', query, 'Params:', { agentId });
+    }
+    
+    const [rows] = await this.bigquery.query(options);
     
     return rows.map(row => ({
       ...row,
@@ -434,14 +475,14 @@ export class BigQueryStorage implements IStorage {
   }
 
   async createConversation(insertConversation: InsertConversation): Promise<Conversation> {
-    const id = await this.getNextId(this.conversationsTable);
+    const id = await this.getNextId(this.config.conversationsTable);
     const conversation = {
       ...insertConversation,
       id,
       createdAt: new Date().toISOString(),
     };
 
-    await this.bigquery.dataset(this.dataset).table(this.conversationsTable).insert([conversation]);
+    await this.bigquery.dataset(this.config.dataset).table(this.config.conversationsTable).insert([conversation]);
     
     return {
       ...conversation,
@@ -460,8 +501,12 @@ export class BigQueryStorage implements IStorage {
       SELECT 
         COUNT(*) as totalConversations,
         SUM(CAST(cost AS FLOAT64)) as totalCost
-      FROM \`${this.dataset}.${this.conversationsTable}\`
+      FROM \`${this.config.dataset}.${this.config.conversationsTable}\`
     `;
+    
+    if (this.config.logQueries) {
+      console.log('BigQuery Query:', statsQuery);
+    }
     
     const [statsRows] = await this.bigquery.query(statsQuery);
     const stats = statsRows[0];
@@ -469,9 +514,13 @@ export class BigQueryStorage implements IStorage {
     // Get active agents count
     const activeAgentsQuery = `
       SELECT COUNT(*) as activeAgents
-      FROM \`${this.dataset}.${this.agentsTable}\`
+      FROM \`${this.config.dataset}.${this.config.agentsTable}\`
       WHERE status = 'active'
     `;
+    
+    if (this.config.logQueries) {
+      console.log('BigQuery Query:', activeAgentsQuery);
+    }
     
     const [activeAgentsRows] = await this.bigquery.query(activeAgentsQuery);
     const activeAgents = activeAgentsRows[0].activeAgents;
@@ -482,10 +531,14 @@ export class BigQueryStorage implements IStorage {
         a.id as agentId,
         COUNT(c.id) as conversations,
         COALESCE(SUM(CAST(c.cost AS FLOAT64)), 0) as cost
-      FROM \`${this.dataset}.${this.agentsTable}\` a
-      LEFT JOIN \`${this.dataset}.${this.conversationsTable}\` c ON a.id = c.agentId
+      FROM \`${this.config.dataset}.${this.config.agentsTable}\` a
+      LEFT JOIN \`${this.config.dataset}.${this.config.conversationsTable}\` c ON a.id = c.agentId
       GROUP BY a.id
     `;
+    
+    if (this.config.logQueries) {
+      console.log('BigQuery Query:', monthlyUsageQuery);
+    }
     
     const [monthlyUsageRows] = await this.bigquery.query(monthlyUsageQuery);
 
@@ -503,6 +556,6 @@ export class BigQueryStorage implements IStorage {
 }
 
 // Use BigQuery storage if environment variables are set, otherwise fall back to memory storage
-export const storage = process.env.GOOGLE_CLOUD_PROJECT_ID 
+export const storage = isDatabaseConfigured() 
   ? new BigQueryStorage() 
   : new MemStorage();

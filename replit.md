@@ -71,8 +71,10 @@ AgentHub is a comprehensive SaaS platform that enables businesses to create, cus
 
 ### Storage Architecture
 - **Dual Storage System**: Automatic detection between BigQuery (production) and in-memory (development)
-- **BigQuery Integration**: Google Cloud BigQuery with automatic table creation and schema management
+- **BigQuery Integration**: Google Cloud BigQuery with comprehensive configuration options
+- **Configurable Settings**: All database parameters configurable via environment variables
 - **Environment-based Selection**: Uses BigQuery when `GOOGLE_CLOUD_PROJECT_ID` is set, otherwise falls back to memory storage
+- **Interactive Setup**: Guided configuration script for easy database setup
 - **Seamless Migration**: Same API interface regardless of storage backend
 
 ### Core Entities
@@ -81,10 +83,18 @@ AgentHub is a comprehensive SaaS platform that enables businesses to create, cus
 - **Sample Data**: Pre-loaded with realistic examples across industries
 - **Automatic Setup**: Tables and schemas created automatically on first run
 
+### BigQuery Configuration
+- **Comprehensive Settings**: All database parameters configurable via environment variables
+- **Environment Templates**: Pre-configured settings for development, staging, and production
+- **Interactive Setup Script**: Guided configuration for easy database setup
+- **Custom Table Names**: Configurable table names for multi-environment deployments
+- **Performance Tuning**: Configurable timeouts, retries, and query logging
+- **Security Features**: Parameterized queries, service account authentication, and audit logging
+
 ### BigQuery Schema
 - **agents table**: ID, business details, industry, AI model configuration, interface type, status, timestamps
 - **conversations table**: ID, agent reference, token usage, cost tracking, timestamps
-- **Parameterized Queries**: Secure SQL queries with parameter binding for data safety
+- **Flexible Schema**: Table names and dataset locations fully configurable
 
 ### Industry Specialization
 - **12 Industry Templates**: Healthcare, Retail, Finance, Real Estate, Education, Hospitality, Legal, Automotive, Technology, Consulting, Fitness, Food & Beverage
@@ -169,4 +179,13 @@ Preferred communication style: Simple, everyday language for non-technical users
 - ✓ Seamless migration without changing frontend or API code
 - ✓ Setup documentation for Google Cloud configuration
 
-The platform now supports enterprise-grade BigQuery storage while maintaining full backward compatibility with the existing codebase.
+### July 20, 2025 - Configurable Database System
+- ✓ Created comprehensive configuration system for all database settings
+- ✓ Environment variables for datasets, tables, timeouts, retries, and logging
+- ✓ Interactive setup script with guided configuration for dev/staging/production
+- ✓ Pre-configured environment templates with optimal settings
+- ✓ Configuration validation and error handling with clear messages
+- ✓ Sample data and query logging toggles for development vs production
+- ✓ Flexible table naming for multi-environment deployments
+
+The platform now offers enterprise-grade BigQuery storage with fully configurable settings, making it easy to deploy across different environments while maintaining complete flexibility and control.
