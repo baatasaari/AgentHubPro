@@ -76,32 +76,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/agents/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid agent ID" });
-      }
-
-      const validation = insertAgentSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Invalid agent data", 
-          errors: validation.error.issues 
-        });
-      }
-
-      const agent = await storage.updateAgent(id, validation.data);
-      if (!agent) {
-        return res.status(404).json({ message: "Agent not found" });
-      }
-
-      res.json(agent);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update agent" });
-    }
-  });
-
   app.patch("/api/agents/:id/status", async (req, res) => {
     try {
       const id = parseInt(req.params.id);

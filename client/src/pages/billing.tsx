@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DollarSign, MessageSquare, Bot, Clock, CreditCard } from "lucide-react";
+import { formatCurrency } from "@/lib/agent-utils";
 import type { Agent } from "@shared/schema";
 
 export default function Billing() {
@@ -12,8 +13,6 @@ export default function Billing() {
   const { data: agents = [] } = useQuery<Agent[]>({
     queryKey: ["/api/agents"],
   });
-
-  const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
