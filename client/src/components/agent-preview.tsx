@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Bot, MessageSquare, Smartphone, Globe, DollarSign } from "lucide-react";
-import { INDUSTRIES, LLM_MODELS } from "@shared/schema";
-import { generateAgentSystemPrompt, getModelPrice, formatCurrency } from "@/lib/agent-utils";
-import type { Agent } from "@shared/schema";
+import { AgentUtils, FormatUtils } from "@/core";
+import { INDUSTRIES, LLM_MODELS } from "@/types";
+import type { Agent } from "@/types";
 
 interface AgentPreviewProps {
   agent: Partial<Agent>;
@@ -14,11 +14,11 @@ export default function AgentPreview({ agent }: AgentPreviewProps) {
   const model = LLM_MODELS.find(m => m.value === agent.llmModel);
   
   const systemPrompt = agent.businessName && agent.businessDescription && agent.industry 
-    ? generateAgentSystemPrompt(agent.businessName, agent.businessDescription, agent.industry)
+    ? AgentUtils.generateSystemPrompt(agent.businessName, agent.businessDescription, agent.industry)
     : null;
 
   const estimatedMonthlyCost = agent.llmModel 
-    ? getModelPrice(agent.llmModel) * 1000 // Assuming 1000 conversations/month with 1K tokens each
+    ? AgentUtils.getModelPrice(agent.llmModel) * 1000 // Assuming 1000 conversations/month with 1K tokens each
     : 0;
 
   return (
@@ -98,7 +98,7 @@ export default function AgentPreview({ agent }: AgentPreviewProps) {
                 <span className="text-sm font-medium text-blue-900">Est. Monthly Cost</span>
               </div>
               <span className="text-lg font-bold text-blue-900">
-                {formatCurrency(estimatedMonthlyCost)}
+                {FormatUtils.formatCurrency(estimatedMonthlyCost)}
               </span>
             </div>
             <p className="text-xs text-blue-700 mt-1">

@@ -2,16 +2,19 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DollarSign, MessageSquare, Bot, Clock, CreditCard } from "lucide-react";
-import { formatCurrency } from "@/lib/agent-utils";
-import type { Agent } from "@shared/schema";
+import { FormatUtils } from "@/core/formatting";
+import { AgentService, UsageService } from "@/services/api";
+import type { Agent, UsageStats } from "@/types";
 
 export default function Billing() {
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<UsageStats>({
     queryKey: ["/api/usage/stats"],
+    queryFn: () => UsageService.getStats(),
   });
 
   const { data: agents = [] } = useQuery<Agent[]>({
     queryKey: ["/api/agents"],
+    queryFn: () => AgentService.getAll(),
   });
 
   return (
@@ -32,7 +35,7 @@ export default function Billing() {
               <div>
                 <p className="text-sm text-blue-600 font-medium">This Month</p>
                 <p className="text-2xl font-bold text-blue-900">
-                  {stats ? formatCurrency(stats.totalCost) : "$0.00"}
+                  {stats ? FormatUtils.formatCurrency(stats.totalCost) : "$0.00"}
                 </p>
               </div>
               <DollarSign className="w-8 h-8 text-blue-600" />
@@ -46,7 +49,7 @@ export default function Billing() {
               <div>
                 <p className="text-sm text-green-600 font-medium">Total Conversations</p>
                 <p className="text-2xl font-bold text-green-900">
-                  {stats ? stats.totalConversations.toLocaleString() : "0"}
+                  {stats ? FormatUtils.formatNumber(stats.totalConversations) : "0"}
                 </p>
               </div>
               <MessageSquare className="w-8 h-8 text-green-600" />
@@ -109,7 +112,7 @@ export default function Billing() {
                     </div>
                   </div>
                   <span className="text-lg font-semibold text-slate-900">
-                    {formatCurrency(usage.cost)}
+                    {FormatUtils.formatCurrency(usage.cost)}
                   </span>
                 </div>
               );

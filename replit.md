@@ -15,6 +15,14 @@ AgentHub is a comprehensive SaaS platform that enables businesses to create, cus
 - **Routing**: Wouter for lightweight client-side routing
 - **Forms**: React Hook Form with Zod validation
 
+### Code Organization (Separated Architecture)
+- **`/components`**: Pure UI components with minimal business logic
+- **`/core`**: Business logic utilities (AgentUtils, FormatUtils)
+- **`/services`**: API communication layer (AgentService, UsageService)
+- **`/types`**: Centralized type definitions and interfaces
+- **`/pages`**: Route-level components using services and core utilities
+- **Clear Separation**: UI completely separated from business logic and API calls
+
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js
 - **Language**: TypeScript with ES modules
@@ -185,6 +193,15 @@ Preferred communication style: Simple, everyday language for non-technical users
 - ✓ Set up multi-environment configuration (dev/prod)
 - ✓ Integrated BigQuery environment variable configuration
 - ✓ Added security best practices with non-root user execution
+
+### July 26, 2025 - UI and Application Code Separation
+- ✓ Created clean architectural separation between UI and business logic
+- ✓ Moved business logic to `/core` utilities (AgentUtils, FormatUtils)
+- ✓ Isolated API calls in `/services` layer (AgentService, UsageService)
+- ✓ Centralized type definitions in `/types` directory
+- ✓ Updated components to use separated architecture
+- ✓ Created comprehensive architecture documentation
+- ✓ Maintained backwards compatibility during transition
 
 ### July 22, 2025 - Code Cleanup and Optimization
 - ✓ Massive code cleanup - removed 27 unused UI components (60% reduction)
