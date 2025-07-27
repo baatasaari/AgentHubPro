@@ -4,9 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search } from "lucide-react";
 import AgentCard from "@/components/agent-card";
+import { AgentService } from "@/services/api";
 import { INDUSTRIES } from "@shared/schema";
 import type { Agent } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Agents() {
@@ -15,13 +15,14 @@ export default function Agents() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: agents = [], isLoading } = useQuery<Agent[]>({
+  const { data: agents = [], isPending } = useQuery<Agent[]>({
     queryKey: ["/api/agents"],
+    queryFn: () => AgentService.getAll(),
   });
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      await apiRequest("PATCH", `/api/agents/${id}/status`, { status });
+      return AgentService.updateStatus(id, status);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
@@ -30,17 +31,31 @@ export default function Agents() {
         description: "Agent status updated successfully",
       });
     },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update agent status",
+        variant: "destructive",
+      });
+    },
   });
 
   const deleteAgentMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/agents/${id}`);
+      return AgentService.delete(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
       toast({
         title: "Success",
         description: "Agent deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete agent",
+        variant: "destructive",
       });
     },
   });
@@ -63,7 +78,7 @@ export default function Agents() {
     }
   };
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="animate-pulse space-y-4">

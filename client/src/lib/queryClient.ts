@@ -49,9 +49,13 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       staleTime: Infinity,
       retry: false,
+      // TanStack Query v5 renamed gcTime (garbage collection time)
+      gcTime: 1000 * 60 * 5, // 5 minutes
     },
     mutations: {
       retry: false,
+      // Enhanced error handling for mutations
+      throwOnError: false,
     },
   },
 });

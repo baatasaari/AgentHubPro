@@ -3,8 +3,15 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// Enhanced security and performance middleware
+app.use(express.json({ limit: '10mb' })); // Set explicit body size limit
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+// Trust proxy for production deployments behind reverse proxies
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -39,12 +46,29 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  // Enhanced error handling middleware
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    res.status(status).json({ message });
-    throw err;
+    // Log errors for debugging
+    if (status >= 500) {
+      console.error(`[Error] ${req.method} ${req.path}:`, err);
+    }
+
+    // Send detailed error info in development only
+    const errorResponse: any = { message };
+    if (process.env.NODE_ENV === 'development') {
+      errorResponse.stack = err.stack;
+      errorResponse.details = err.details;
+    }
+
+    res.status(status).json(errorResponse);
+    
+    // Don't throw in production to prevent crashes
+    if (process.env.NODE_ENV !== 'production') {
+      throw err;
+    }
   });
 
   // importantly only setup vite in development and after

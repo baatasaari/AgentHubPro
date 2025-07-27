@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Copy, Check, Lightbulb } from "lucide-react";
+import { AgentService } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 
 interface CodeGeneratorProps {
@@ -14,8 +15,9 @@ export default function CodeGenerator({ agentId }: CodeGeneratorProps) {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
-  const { data: embedData, isLoading } = useQuery({
+  const { data: embedData, isPending } = useQuery<{ embedCode: string }>({
     queryKey: [`/api/agents/${agentId}/embed`],
+    queryFn: () => AgentService.getEmbedCode(agentId),
     enabled: !!agentId,
   });
 
@@ -39,7 +41,7 @@ export default function CodeGenerator({ agentId }: CodeGeneratorProps) {
     }
   };
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <Card>
         <CardContent className="p-6">
