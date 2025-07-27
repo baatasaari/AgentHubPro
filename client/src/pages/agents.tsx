@@ -4,9 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search } from "lucide-react";
 import AgentCard from "@/components/agent-card";
-import { AgentService } from "@/services/api";
-import { INDUSTRIES } from "@shared/schema";
-import type { Agent } from "@shared/schema";
+import { ModernAgentService } from "@/services";
+import { BusinessLogic } from "@/core";
+import { INDUSTRIES } from "@/types";
+import type { Agent } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Agents() {
@@ -17,12 +18,12 @@ export default function Agents() {
 
   const { data: agents = [], isPending } = useQuery<Agent[]>({
     queryKey: ["/api/agents"],
-    queryFn: () => AgentService.getAll(),
+    queryFn: () => ModernAgentService.getAll(),
   });
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      return AgentService.updateStatus(id, status);
+      return ModernAgentService.updateStatus(id, status);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
@@ -42,7 +43,7 @@ export default function Agents() {
 
   const deleteAgentMutation = useMutation({
     mutationFn: async (id: number) => {
-      return AgentService.delete(id);
+      return ModernAgentService.delete(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/agents"] });

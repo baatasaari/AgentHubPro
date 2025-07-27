@@ -13,7 +13,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Smartphone } from "lucide-react";
 import { insertAgentSchema, INDUSTRIES, LLM_MODELS, INTERFACE_TYPES, type Agent, type InsertAgent } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
+import { ValidationRules } from "@/core";
+import { ModernAgentService } from "@/services";
 import { useToast } from "@/hooks/use-toast";
 
 interface AgentFormProps {
@@ -27,7 +28,7 @@ export default function AgentForm({ onFormChange, onAgentCreated }: AgentFormPro
   const queryClient = useQueryClient();
 
   const form = useForm<InsertAgent>({
-    resolver: zodResolver(insertAgentSchema),
+    resolver: zodResolver(ValidationRules.agentValidationSchema),
     defaultValues: {
       businessName: "",
       businessDescription: "",
@@ -39,10 +40,7 @@ export default function AgentForm({ onFormChange, onAgentCreated }: AgentFormPro
   });
 
   const createAgentMutation = useMutation({
-    mutationFn: async (data: InsertAgent) => {
-      const response = await apiRequest("POST", "/api/agents", data);
-      return response.json();
-    },
+    mutationFn: (data: InsertAgent) => ModernAgentService.create(data),
     onSuccess: (agent: Agent) => {
       queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
       toast({

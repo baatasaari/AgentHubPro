@@ -1,61 +1,70 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+/**
+ * TanStack Query Client Configuration
+ */
 
-async function throwIfResNotOk(res: Response) {
-  if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
-  }
-}
-
-export async function apiRequest(
-  method: string,
-  url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
-  const res = await fetch(url, {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
-
-  await throwIfResNotOk(res);
-  return res;
-}
-
-type UnauthorizedBehavior = "returnNull" | "throw";
-export const getQueryFn: <T>(options: {
-  on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
-      credentials: "include",
-    });
-
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
-    }
-
-    await throwIfResNotOk(res);
-    return await res.json();
-  };
+import { QueryClient } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: false,
-      refetchOnWindowFocus: false,
       staleTime: Infinity,
-      retry: false,
-      // TanStack Query v5 renamed gcTime (garbage collection time)
       gcTime: 1000 * 60 * 5, // 5 minutes
+      retry: 3,
+      refetchOnWindowFocus: false,
     },
     mutations: {
-      retry: false,
-      // Enhanced error handling for mutations
+      retry: 1,
       throwOnError: false,
     },
+  },
+});
+
+/**
+ * Generic API request helper
+ */
+export async function apiRequest(
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
+  url: string,
+  data?: any
+): Promise<Response> {
+  const config: RequestInit = {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+    },
+  };
+
+  if (data && method !== "GET") {
+    config.body = JSON.stringify(data);
+  }
+
+  const response = await fetch(url, config);
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Request failed: ${response.statusText}`);
+  }
+
+  return response;
+}
+
+/**
+ * Default query function that works with TanStack Query
+ */
+export const defaultQueryFn = async ({ queryKey }: { queryKey: any[] }): Promise<any> => {
+  const [url] = queryKey;
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
+  }
+  
+  return response.json();
+};
+
+// Set the default query function
+queryClient.setDefaultOptions({
+  queries: {
+    queryFn: defaultQueryFn,
   },
 });

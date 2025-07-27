@@ -11,8 +11,8 @@ import {
   Clock,
   Bot
 } from "lucide-react";
-import { formatCurrency, formatDate, getIndustryLabel } from "@/lib/agent-utils";
-import type { Agent } from "@shared/schema";
+import { FormatUtils, BusinessLogic } from "@/core";
+import type { Agent } from "@/types";
 import { useState } from "react";
 
 export default function Analytics() {
@@ -90,7 +90,7 @@ export default function Analytics() {
               <div>
                 <p className="text-sm text-green-600 font-medium">Revenue Generated</p>
                 <p className="text-2xl font-bold text-green-900">
-                  {formatCurrency((stats as any)?.totalCost || 0)}
+                  {FormatUtils.formatCurrency((stats as any)?.totalCost || 0)}
                 </p>
               </div>
               <DollarSign className="w-8 h-8 text-green-600" />
@@ -234,14 +234,14 @@ export default function Analytics() {
                 return (
                   <div key={usage.agentId} className="flex items-center justify-between p-3 border border-border rounded-lg">
                     <div>
-                      <p className="font-medium text-slate-900">{getIndustryLabel(agent.industry)}</p>
+                      <p className="font-medium text-slate-900">{FormatUtils.getIndustryLabel(agent.industry)}</p>
                       <p className="text-sm text-muted-foreground">
                         {usage.conversations} conversations
                       </p>
                     </div>
                     <div className="text-right">
                       <span className="text-lg font-semibold text-slate-900">
-                        {formatCurrency(usage.cost)}
+                        {FormatUtils.formatCurrency(usage.cost)}
                       </span>
                     </div>
                   </div>

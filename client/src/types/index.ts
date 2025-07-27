@@ -1,8 +1,11 @@
 // Re-export shared types for easy access
 export type { Agent, InsertAgent, Conversation, InsertConversation } from "@shared/schema";
-export { INDUSTRIES, LLM_MODELS } from "@shared/schema";
+export { INDUSTRIES, LLM_MODELS, INTERFACE_TYPES } from "@shared/schema";
 
 // UI-specific types
+export * from "./ui";
+
+// Legacy types for backward compatibility (migrating away from these)
 export interface WidgetConfig {
   primaryColor: string;
   position: string;
