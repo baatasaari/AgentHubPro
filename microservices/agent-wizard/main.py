@@ -10,6 +10,9 @@ from typing import List, Optional
 import asyncio
 from datetime import datetime
 import uuid
+import yaml
+import os
+from pathlib import Path
 
 app = FastAPI(
     title="Agent Wizard Service",
@@ -130,6 +133,23 @@ class Agent(BaseModel):
 # In-memory storage (replace with database in production)
 agents_db: List[Agent] = []
 
+# Load industry prompts configuration
+def load_industry_prompts():
+    """Load industry-specific system prompts from YAML configuration"""
+    config_path = Path(__file__).parent / "config" / "industry_prompts.yaml"
+    try:
+        with open(config_path, 'r', encoding='utf-8') as file:
+            return yaml.safe_load(file)
+    except FileNotFoundError:
+        print(f"Warning: Industry prompts file not found at {config_path}")
+        return {"industries": {}}
+    except yaml.YAMLError as e:
+        print(f"Error parsing YAML configuration: {e}")
+        return {"industries": {}}
+
+# Global configuration
+INDUSTRY_CONFIG = load_industry_prompts()
+
 # Business Logic Functions
 def validate_model_compatibility(model: str, interface_type: str) -> bool:
     """Validate if model is compatible with interface type"""
@@ -144,16 +164,27 @@ def validate_model_compatibility(model: str, interface_type: str) -> bool:
     return model in webchat_compatible
 
 def generate_system_prompt(industry: str, business_name: str) -> str:
-    """Generate industry-specific system prompt"""
-    industry_prompts = {
-        'healthcare': f"You are a healthcare assistant for {business_name}. Help patients with appointment scheduling, basic health information, and general inquiries. Always remind users to consult healthcare professionals for medical advice.",
-        'retail': f"You are a customer service assistant for {business_name}. Help customers with product information, order tracking, returns, and general shopping assistance.",
-        'finance': f"You are a financial services assistant for {business_name}. Help clients with account inquiries, basic financial information, and service guidance. Always remind users to consult financial advisors for investment advice.",
-        'technology': f"You are a technical support assistant for {business_name}. Help users with product information, troubleshooting, and technical guidance.",
-        'realestate': f"You are a real estate assistant for {business_name}. Help clients with property information, scheduling viewings, and market insights.",
-    }
+    """Generate industry-specific system prompt from YAML configuration"""
+    industries = INDUSTRY_CONFIG.get("industries", {})
+    industry_config = industries.get(industry)
     
-    return industry_prompts.get(industry, f"You are a helpful assistant for {business_name}. Assist customers with their inquiries and provide excellent service.")
+    if industry_config and "system_prompt" in industry_config:
+        # Format the prompt with the business name
+        return industry_config["system_prompt"].format(business_name=business_name)
+    else:
+        # Fallback prompt if industry not found in configuration
+        return f"You are a helpful assistant for {business_name}. Assist customers with their inquiries and provide excellent customer service. Be professional, friendly, and helpful in all interactions."
+
+def get_industry_metadata(industry: str) -> dict:
+    """Get industry metadata from YAML configuration"""
+    industries = INDUSTRY_CONFIG.get("industries", {})
+    industry_config = industries.get(industry, {})
+    
+    return {
+        "name": industry_config.get("name", industry.title()),
+        "icon": industry_config.get("icon", "help-circle"),
+        "has_custom_prompt": "system_prompt" in industry_config
+    }
 
 # API Endpoints
 @app.get("/health")
@@ -163,21 +194,18 @@ async def health_check():
 
 @app.get("/api/industries", response_model=List[Industry])
 async def get_industries():
-    """Get available industries"""
-    return [
-        Industry(value="healthcare", label="Healthcare & Medical", icon="stethoscope"),
-        Industry(value="retail", label="Retail & E-commerce", icon="shopping-cart"),
-        Industry(value="finance", label="Finance & Banking", icon="university"),
-        Industry(value="realestate", label="Real Estate", icon="home"),
-        Industry(value="education", label="Education & Training", icon="graduation-cap"),
-        Industry(value="hospitality", label="Hospitality & Travel", icon="plane"),
-        Industry(value="legal", label="Legal Services", icon="gavel"),
-        Industry(value="automotive", label="Automotive", icon="car"),
-        Industry(value="technology", label="Technology & Software", icon="laptop"),
-        Industry(value="consulting", label="Consulting & Professional", icon="briefcase"),
-        Industry(value="fitness", label="Fitness & Wellness", icon="dumbbell"),
-        Industry(value="food", label="Food & Beverage", icon="utensils"),
-    ]
+    """Get available industries from YAML configuration"""
+    industries = INDUSTRY_CONFIG.get("industries", {})
+    industry_list = []
+    
+    for industry_key, industry_config in industries.items():
+        industry_list.append(Industry(
+            value=industry_key,
+            label=industry_config.get("name", industry_key.title()),
+            icon=industry_config.get("icon", "help-circle")
+        ))
+    
+    return industry_list
 
 @app.get("/api/models", response_model=List[LLMModel])
 async def get_llm_models():
@@ -288,7 +316,14 @@ async def generate_agent_prompt(agent_id: str):
         raise HTTPException(status_code=404, detail="Agent not found")
     
     prompt = generate_system_prompt(agent.industry, agent.business_name)
-    return {"system_prompt": prompt}
+    metadata = get_industry_metadata(agent.industry)
+    
+    return {
+        "system_prompt": prompt,
+        "industry_metadata": metadata,
+        "agent_id": agent_id,
+        "business_name": agent.business_name
+    }
 
 @app.post("/api/agents/{agent_id}/validate-deployment")
 async def validate_deployment(agent_id: str):
@@ -305,9 +340,75 @@ async def validate_deployment(agent_id: str):
     if not validate_model_compatibility(agent.llm_model, agent.interface_type):
         issues.append("Model is not compatible with selected interface")
     
+    # Check if industry has custom prompt configuration
+    metadata = get_industry_metadata(agent.industry)
+    if not metadata.get("has_custom_prompt", False):
+        issues.append("Industry prompt configuration missing")
+    
     return {
         "ready": len(issues) == 0,
-        "issues": issues
+        "issues": issues,
+        "industry_metadata": metadata
+    }
+
+@app.get("/api/config/reload")
+async def reload_configuration():
+    """Reload industry prompts configuration from YAML file"""
+    global INDUSTRY_CONFIG
+    INDUSTRY_CONFIG = load_industry_prompts()
+    
+    industries_count = len(INDUSTRY_CONFIG.get("industries", {}))
+    
+    return {
+        "message": "Configuration reloaded successfully",
+        "industries_loaded": industries_count,
+        "config_version": INDUSTRY_CONFIG.get("version", "unknown"),
+        "last_updated": INDUSTRY_CONFIG.get("last_updated", "unknown")
+    }
+
+@app.get("/api/config/industries/{industry_key}")
+async def get_industry_config(industry_key: str):
+    """Get specific industry configuration details"""
+    industries = INDUSTRY_CONFIG.get("industries", {})
+    industry_config = industries.get(industry_key)
+    
+    if not industry_config:
+        raise HTTPException(status_code=404, detail="Industry configuration not found")
+    
+    return {
+        "industry": industry_key,
+        "name": industry_config.get("name", industry_key.title()),
+        "icon": industry_config.get("icon", "help-circle"),
+        "has_system_prompt": "system_prompt" in industry_config,
+        "prompt_length": len(industry_config.get("system_prompt", "")) if "system_prompt" in industry_config else 0,
+        "configuration": industry_config
+    }
+
+@app.post("/api/runtime/chat/{agent_id}")
+async def runtime_chat_prompt(agent_id: str, user_message: dict):
+    """Get runtime system prompt for chat interface"""
+    agent = next((a for a in agents_db if a.id == agent_id), None)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    if agent.status != "active":
+        raise HTTPException(status_code=400, detail="Agent must be active for runtime operations")
+    
+    system_prompt = generate_system_prompt(agent.industry, agent.business_name)
+    metadata = get_industry_metadata(agent.industry)
+    
+    return {
+        "agent_id": agent_id,
+        "system_prompt": system_prompt,
+        "industry_metadata": metadata,
+        "agent_config": {
+            "business_name": agent.business_name,
+            "industry": agent.industry,
+            "llm_model": agent.llm_model,
+            "interface_type": agent.interface_type
+        },
+        "message": user_message.get("message", ""),
+        "timestamp": datetime.now().isoformat()
     }
 
 if __name__ == "__main__":
