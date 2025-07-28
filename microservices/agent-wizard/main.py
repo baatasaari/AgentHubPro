@@ -130,7 +130,24 @@ class Agent(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-# In-memory storage (replace with database in production)
+# Storage configuration - BigQuery or in-memory
+USE_BIGQUERY = os.environ.get('USE_BIGQUERY', 'false').lower() == 'true'
+
+if USE_BIGQUERY:
+    try:
+        from bigquery_client import BigQueryClient
+        bigquery_client = BigQueryClient()
+        bigquery_client.ensure_tables_exist()
+        print("BigQuery storage initialized successfully")
+    except Exception as e:
+        print(f"Failed to initialize BigQuery: {e}")
+        print("Falling back to in-memory storage")
+        USE_BIGQUERY = False
+        bigquery_client = None
+else:
+    bigquery_client = None
+
+# In-memory storage (fallback or development)
 agents_db: List[Agent] = []
 
 # Load industry prompts configuration
@@ -189,8 +206,22 @@ def get_industry_metadata(industry: str) -> dict:
 # API Endpoints
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy", "service": "agent-wizard", "version": "1.0.0"}
+    """Health check endpoint with BigQuery status"""
+    health_status = {
+        "status": "healthy",
+        "service": "agent-wizard",
+        "version": "1.0.0",
+        "storage": "in-memory" if not USE_BIGQUERY else "bigquery",
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    if USE_BIGQUERY and bigquery_client:
+        bq_health = bigquery_client.health_check()
+        health_status["bigquery"] = bq_health
+        if bq_health["status"] != "healthy":
+            health_status["status"] = "degraded"
+    
+    return health_status
 
 @app.get("/api/industries", response_model=List[Industry])
 async def get_industries():
@@ -251,21 +282,81 @@ async def create_agent(agent_data: AgentCreate):
         created_at=datetime.now()
     )
     
-    agents_db.append(agent)
+    # Store in BigQuery or in-memory
+    if USE_BIGQUERY and bigquery_client:
+        agent_data = {
+            "id": agent.id,
+            "business_name": agent.business_name,
+            "business_description": agent.business_description,
+            "business_domain": agent.business_domain,
+            "industry": agent.industry,
+            "llm_model": agent.llm_model,
+            "interface_type": agent.interface_type,
+            "status": agent.status,
+            "created_at": agent.created_at,
+            "system_prompt": generate_system_prompt(agent.industry, agent.business_name),
+            "metadata": {
+                "created_via": "api",
+                "validation_passed": True
+            }
+        }
+        
+        success = bigquery_client.insert_agent(agent_data)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to save agent to BigQuery")
+    else:
+        agents_db.append(agent)
+    
     return agent
 
 @app.get("/api/agents", response_model=List[Agent])
 async def get_agents():
     """Get all agents"""
-    return agents_db
+    if USE_BIGQUERY and bigquery_client:
+        agent_data_list = bigquery_client.get_all_agents()
+        agents = []
+        for data in agent_data_list:
+            agents.append(Agent(
+                id=data["id"],
+                business_name=data["business_name"],
+                business_description=data["business_description"],
+                business_domain=data["business_domain"],
+                industry=data["industry"],
+                llm_model=data["llm_model"],
+                interface_type=data["interface_type"],
+                status=data["status"],
+                created_at=data["created_at"],
+                updated_at=data.get("updated_at")
+            ))
+        return agents
+    else:
+        return agents_db
 
 @app.get("/api/agents/{agent_id}", response_model=Agent)
 async def get_agent(agent_id: str):
     """Get specific agent"""
-    agent = next((a for a in agents_db if a.id == agent_id), None)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
-    return agent
+    if USE_BIGQUERY and bigquery_client:
+        agent_data = bigquery_client.get_agent(agent_id)
+        if not agent_data:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        
+        return Agent(
+            id=agent_data["id"],
+            business_name=agent_data["business_name"],
+            business_description=agent_data["business_description"],
+            business_domain=agent_data["business_domain"],
+            industry=agent_data["industry"],
+            llm_model=agent_data["llm_model"],
+            interface_type=agent_data["interface_type"],
+            status=agent_data["status"],
+            created_at=agent_data["created_at"],
+            updated_at=agent_data.get("updated_at")
+        )
+    else:
+        agent = next((a for a in agents_db if a.id == agent_id), None)
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        return agent
 
 @app.patch("/api/agents/{agent_id}", response_model=Agent)
 async def update_agent(agent_id: str, update_data: AgentUpdate):
