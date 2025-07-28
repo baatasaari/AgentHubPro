@@ -12,6 +12,7 @@ AgentHub is a comprehensive SaaS platform that enables businesses to create, cus
 - **💰 Billing Service (8003)**: Cost tracking, billing, invoicing, and payment management
 - **📈 Dashboard Service (8004)**: Data aggregation, real-time metrics, and cross-service orchestration
 - **🎨 Widget Service (8005)**: Widget customization, code generation, and template management
+- **🔧 My Agents Service (8006)**: Comprehensive agent lifecycle management (CRUD, enable/disable, status tracking)
 - **🌐 API Gateway (8000)**: Request routing, load balancing, and service discovery
 
 ### Frontend Architecture
@@ -212,6 +213,7 @@ Preferred communication style: Simple, everyday language for non-technical users
 - ✓ Implemented Billing Service with usage tracking, invoicing, and payment management
 - ✓ Created Dashboard Service with cross-service data aggregation and real-time updates
 - ✓ Developed Widget Service with customization, code generation, and template system
+- ✓ Built My Agents Service for comprehensive agent lifecycle management (CRUD, enable/disable, bulk operations)
 - ✓ Established complete microservices ecosystem with API Gateway and Docker orchestration
 
 ### July 22, 2025 - Docker Containerization

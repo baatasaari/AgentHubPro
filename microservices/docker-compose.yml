@@ -104,6 +104,32 @@ services:
     networks:
       - agenthub-network
 
+  # My Agents Service
+  my-agents-service:
+    build:
+      context: ./my-agents-service
+      dockerfile: Dockerfile
+    ports:
+      - "8006:8006"
+    environment:
+      - AGENT_WIZARD_URL=http://agent-wizard:8001
+      - ANALYTICS_SERVICE_URL=http://analytics-service:8002
+      - BILLING_SERVICE_URL=http://billing-service:8003
+      - WIDGET_SERVICE_URL=http://widget-service:8005
+      - ENVIRONMENT=development
+    depends_on:
+      - agent-wizard
+      - analytics-service
+      - billing-service
+      - widget-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - agenthub-network
+
   # API Gateway (optional - using nginx for routing)
   api-gateway:
     image: nginx:alpine
@@ -117,6 +143,7 @@ services:
       - billing-service
       - dashboard-service
       - widget-service
+      - my-agents-service
     networks:
       - agenthub-network
 

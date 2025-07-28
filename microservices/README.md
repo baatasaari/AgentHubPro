@@ -36,6 +36,12 @@ The AgentHub platform is built using a microservices architecture with the follo
 - **Storage**: In-memory
 - **Key Endpoints**: `/api/widgets`, `/api/templates`, `/api/widgets/{id}/embed`
 
+### 🔧 My Agents Service (Port 8006)
+- **Purpose**: Comprehensive agent lifecycle management
+- **Features**: CRUD operations, enable/disable, status tracking, bulk operations
+- **Storage**: Cross-service coordination with metadata management
+- **Key Endpoints**: `/api/my-agents`, `/api/my-agents/{id}/status`, `/api/my-agents/bulk`
+
 ### 🌐 API Gateway (Port 8000)
 - **Purpose**: Request routing and load balancing
 - **Technology**: Nginx
@@ -79,6 +85,7 @@ python main.py
 - **Billing**: http://localhost:8003
 - **Dashboard**: http://localhost:8004
 - **Widget**: http://localhost:8005
+- **My Agents**: http://localhost:8006
 
 ## API Documentation
 
@@ -89,6 +96,7 @@ Each service provides OpenAPI documentation:
 - Billing: http://localhost:8003/docs
 - Dashboard: http://localhost:8004/docs
 - Widget: http://localhost:8005/docs
+- My Agents: http://localhost:8006/docs
 
 ## Service Communication
 
@@ -214,6 +222,7 @@ curl http://localhost:8002/health  # Analytics
 curl http://localhost:8003/health  # Billing
 curl http://localhost:8004/health  # Dashboard
 curl http://localhost:8005/health  # Widget
+curl http://localhost:8006/health  # My Agents
 
 # Test via API Gateway
 curl http://localhost:8000/health

@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
+    "aiohttp>=3.12.14",
     "fastapi>=0.116.1",
     "google-auth>=2.40.3",
     "google-cloud-bigquery>=3.35.1",
