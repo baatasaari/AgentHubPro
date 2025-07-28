@@ -1,0 +1,11 @@
+{
+  "service": "my-agents",
+  "timestamp": "2025-07-28T21:11:22.212138",
+  "results": {
+    "health": {
+      "healthy": false,
+      "error": "All connection attempts failed"
+    }
+  },
+  "score": 0.0
+}
