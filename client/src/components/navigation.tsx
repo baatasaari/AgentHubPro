@@ -1,58 +1,56 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bot, Plus } from "lucide-react";
+import { Settings, BarChart3, CreditCard, Bot, Users, Home } from "lucide-react";
 
 export default function Navigation() {
   const [location] = useLocation();
 
   const navItems = [
-    { path: "/", label: "Dashboard", active: location === "/" },
-    { path: "/agents", label: "My Agents", active: location === "/agents" },
-    { path: "/analytics", label: "Analytics", active: location === "/analytics" },
-    { path: "/billing", label: "Billing", active: location === "/billing" },
+    { path: "/", label: "Dashboard", icon: Home },
+    { path: "/agents", label: "Agent Wizard", icon: Bot },
+    { path: "/my-agents", label: "My Agents", icon: Users },
+    { path: "/analytics", label: "Analytics", icon: BarChart3 },
+    { path: "/billing", label: "Billing", icon: CreditCard },
   ];
 
   return (
-    <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center space-x-8">
-            <Link href="/" className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <Bot className="w-4 h-4 text-primary-foreground" />
-              </div>
-              <h1 className="text-xl font-bold text-slate-900">AgentHub</h1>
-            </Link>
-            <nav className="hidden md:flex space-x-6">
-              {navItems.map((item) => (
-                <Link key={item.path} href={item.path}>
-                  <span
-                    className={`pb-4 font-medium transition-colors ${
-                      item.active
-                        ? "text-slate-900 border-b-2 border-primary"
-                        : "text-slate-500 hover:text-slate-700"
-                    }`}
-                  >
-                    {item.label}
-                  </span>
-                </Link>
-              ))}
-            </nav>
+    <nav className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-8">
+          <div className="flex items-center space-x-2">
+            <Settings className="h-6 w-6 text-blue-600" />
+            <span className="text-xl font-bold text-gray-900">AgentHub</span>
           </div>
-          <div className="flex items-center space-x-4">
-            <Link href="/">
-              <Button className="bg-primary hover:bg-primary/90">
-                <Plus className="w-4 h-4 mr-2" />
-                New Agent
-              </Button>
-            </Link>
-            <Avatar>
-              <AvatarFallback>U</AvatarFallback>
-            </Avatar>
+          
+          <div className="flex items-center space-x-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location === item.path;
+              
+              return (
+                <Link key={item.path} href={item.path}>
+                  <Button
+                    variant={isActive ? "default" : "ghost"}
+                    className="flex items-center space-x-2"
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </Button>
+                </Link>
+              );
+            })}
           </div>
         </div>
+        
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm">
+            Help
+          </Button>
+          <Button variant="outline" size="sm">
+            Account
+          </Button>
+        </div>
       </div>
-    </header>
+    </nav>
   );
 }
