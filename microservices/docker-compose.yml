@@ -1,40 +1,129 @@
 version: '3.8'
 
 services:
+  # Agent Wizard Service
   agent-wizard:
-    build: ./agent-wizard
+    build:
+      context: ./agent-wizard
+      dockerfile: Dockerfile
     ports:
       - "8001:8001"
     environment:
-      - SERVICE_NAME=agent-wizard
-      - DEBUG=false
+      - USE_BIGQUERY=false
+      - ENVIRONMENT=development
+    volumes:
+      - ./agent-wizard/config:/app/config
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-    restart: unless-stopped
+    networks:
+      - agenthub-network
 
-  # Future microservices can be added here:
-  # analytics-service:
-  #   build: ./analytics-service
-  #   ports:
-  #     - "8002:8002"
-  
-  # billing-service:
-  #   build: ./billing-service
-  #   ports:
-  #     - "8003:8003"
+  # Analytics Service
+  analytics-service:
+    build:
+      context: ./analytics-service
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      - USE_BIGQUERY=false
+      - ENVIRONMENT=development
+    depends_on:
+      - agent-wizard
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - agenthub-network
 
-  # api-gateway:
-  #   build: ./api-gateway
-  #   ports:
-  #     - "8000:8000"
-  #   depends_on:
-  #     - agent-wizard
-  #     - analytics-service
-  #     - billing-service
+  # Billing Service
+  billing-service:
+    build:
+      context: ./billing-service
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8003"
+    environment:
+      - USE_BIGQUERY=false
+      - ENVIRONMENT=development
+    depends_on:
+      - agent-wizard
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - agenthub-network
+
+  # Dashboard Service
+  dashboard-service:
+    build:
+      context: ./dashboard-service
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8004"
+    environment:
+      - AGENT_SERVICE_URL=http://agent-wizard:8001
+      - ANALYTICS_SERVICE_URL=http://analytics-service:8002
+      - BILLING_SERVICE_URL=http://billing-service:8003
+      - ENVIRONMENT=development
+    depends_on:
+      - agent-wizard
+      - analytics-service
+      - billing-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - agenthub-network
+
+  # Widget Service
+  widget-service:
+    build:
+      context: ./widget-service
+      dockerfile: Dockerfile
+    ports:
+      - "8005:8005"
+    environment:
+      - ENVIRONMENT=development
+    depends_on:
+      - agent-wizard
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - agenthub-network
+
+  # API Gateway (optional - using nginx for routing)
+  api-gateway:
+    image: nginx:alpine
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - agent-wizard
+      - analytics-service
+      - billing-service
+      - dashboard-service
+      - widget-service
+    networks:
+      - agenthub-network
 
 networks:
-  default:
-    name: agenthub-microservices
+  agenthub-network:
+    driver: bridge
+
+volumes:
+  config-data:
+    driver: local
