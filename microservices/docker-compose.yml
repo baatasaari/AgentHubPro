@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  agent-wizard:
+    build: ./agent-wizard
+    ports:
+      - "8001:8001"
+    environment:
+      - SERVICE_NAME=agent-wizard
+      - DEBUG=false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Future microservices can be added here:
+  # analytics-service:
+  #   build: ./analytics-service
+  #   ports:
+  #     - "8002:8002"
+  
+  # billing-service:
+  #   build: ./billing-service
+  #   ports:
+  #     - "8003:8003"
+
+  # api-gateway:
+  #   build: ./api-gateway
+  #   ports:
+  #     - "8000:8000"
+  #   depends_on:
+  #     - agent-wizard
+  #     - analytics-service
+  #     - billing-service
+
+networks:
+  default:
+    name: agenthub-microservices
