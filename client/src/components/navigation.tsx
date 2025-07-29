@@ -11,6 +11,7 @@ export default function Navigation() {
     { path: "/my-agents", label: "My Agents", icon: Users },
     { path: "/consultation", label: "Book Consultation", icon: MessageCircle },
     { path: "/payment-demo", label: "Payment Demo", icon: Smartphone },
+    { path: "/conversational-payment", label: "Conversational Payments", icon: MessageCircle },
     { path: "/rag", label: "RAG Knowledge", icon: Database },
     { path: "/analytics", label: "Analytics", icon: BarChart3 },
     { path: "/billing", label: "Billing", icon: CreditCard },

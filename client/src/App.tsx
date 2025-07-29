@@ -11,6 +11,7 @@ import Analytics from "@/pages/analytics";
 import RAGManagement from "@/pages/rag-management"; 
 import ConsultationBooking from "@/pages/consultation-booking";
 import PaymentDemo from "@/pages/payment-demo";
+import ConversationalPaymentDemo from "@/pages/conversational-payment-demo";
 import Navigation from "@/components/navigation";
 import NotFound from "@/pages/not-found";
 
@@ -27,6 +28,7 @@ function Router() {
         <Route path="/rag" component={RAGManagement} />
         <Route path="/consultation" component={ConsultationBooking} />
         <Route path="/payment-demo" component={PaymentDemo} />
+        <Route path="/conversational-payment" component={ConversationalPaymentDemo} />
         <Route component={NotFound} />
       </Switch>
     </div>

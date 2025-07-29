@@ -5,10 +5,148 @@ import { insertAgentSchema, insertConversationSchema } from "@shared/schema";
 import { z } from "zod";
 import { ragRoutes } from "./rag";
 import { registerPaymentRoutes } from './payment-routes';
+import { ConversationalPaymentService, ConversationContext } from "./conversational-payment";
+import { CalendarIntegrationService, BookingRequest } from "./calendar-integration";
+import { InsightsIntegrationService, PaymentInsight } from "./insights-integration";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize services
+  const conversationalPaymentService = new ConversationalPaymentService();
+  const calendarService = new CalendarIntegrationService();
+  const insightsService = new InsightsIntegrationService();
+
   // Register payment routes
   registerPaymentRoutes(app);
+
+  // Conversational payment routes
+  app.post("/api/conversation/process", async (req, res) => {
+    try {
+      const { context, message } = req.body;
+      const result = await conversationalPaymentService.processConversation(context, message);
+      
+      // Handle actions
+      for (const action of result.actions) {
+        if (action.type === 'booking_confirmation') {
+          await calendarService.bookSlot(action.data);
+        } else if (action.type === 'payment_link') {
+          // Record payment insight
+          const insight: PaymentInsight = {
+            consultationId: action.data.consultationId,
+            agentId: context.agentId,
+            customerId: context.customerId,
+            platform: context.platform,
+            industry: context.industry,
+            paymentData: {
+              amount: action.data.amount,
+              currency: 'INR',
+              method: action.data.method,
+              status: 'pending',
+              timestamp: new Date().toISOString()
+            },
+            consultationData: {
+              type: context.bookingData?.consultationType || 'whatsapp',
+              duration: 30,
+              scheduledAt: new Date().toISOString()
+            },
+            customerData: {
+              name: context.customerData.name || 'Unknown',
+              phone: context.customerData.phone || '',
+              email: context.customerData.email || '',
+              isReturningCustomer: false
+            },
+            conversationMetrics: {
+              messageCount: 0,
+              responseTime: 0,
+              conversionRate: 0,
+              touchpoints: []
+            },
+            revenueAttribution: {
+              customerLifetimeValue: 0,
+              acquisitionCost: 0,
+              profitMargin: 0,
+              revenueCategory: 'new_customer'
+            }
+          };
+          await insightsService.recordPaymentInsight(insight);
+        }
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Conversation processing error:', error);
+      res.status(500).json({ message: "Failed to process conversation" });
+    }
+  });
+
+  // Calendar integration routes
+  app.get("/api/calendar/slots/:agentId", async (req, res) => {
+    try {
+      const { agentId } = req.params;
+      const { industry, startDate, endDate } = req.query;
+      
+      const dateRange = startDate && endDate ? {
+        start: new Date(startDate as string),
+        end: new Date(endDate as string)
+      } : undefined;
+      
+      const slots = await calendarService.getAvailableSlots(agentId, industry as string, dateRange);
+      res.json(slots);
+    } catch (error) {
+      console.error('Calendar slots error:', error);
+      res.status(500).json({ message: "Failed to fetch calendar slots" });
+    }
+  });
+
+  app.post("/api/calendar/book", async (req, res) => {
+    try {
+      const bookingRequest: BookingRequest = req.body;
+      const result = await calendarService.bookSlot(bookingRequest);
+      res.json(result);
+    } catch (error) {
+      console.error('Calendar booking error:', error);
+      res.status(500).json({ message: "Failed to book calendar slot" });
+    }
+  });
+
+  // Insights routes
+  app.get("/api/insights/report/:agentId", async (req, res) => {
+    try {
+      const { agentId } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      const start = startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const end = endDate ? new Date(endDate as string) : new Date();
+      
+      const report = await insightsService.generateInsightsReport(agentId, start, end);
+      res.json(report);
+    } catch (error) {
+      console.error('Insights report error:', error);
+      res.status(500).json({ message: "Failed to generate insights report" });
+    }
+  });
+
+  app.get("/api/insights/customer/:customerId", async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      const history = await insightsService.getCustomerPaymentHistory(customerId);
+      res.json(history);
+    } catch (error) {
+      console.error('Customer insights error:', error);
+      res.status(500).json({ message: "Failed to fetch customer insights" });
+    }
+  });
+
+  app.get("/api/insights/platform/:agentId", async (req, res) => {
+    try {
+      const { agentId } = req.params;
+      const comparison = await insightsService.getPlatformComparison(agentId);
+      res.json(comparison);
+    } catch (error) {
+      console.error('Platform comparison error:', error);
+      res.status(500).json({ message: "Failed to fetch platform comparison" });
+    }
+  });
+
   // Agent routes
   app.get("/api/agents", async (req, res) => {
     try {
