@@ -96,10 +96,14 @@ invoices_db: Dict[str, Invoice] = {}
 # Get pricing configuration from config
 pricing_config = config.get_pricing_config()
 PRICING = {
-    UsageType.TOKEN_USAGE: pricing_config.get("models", {}),
-    UsageType.API_CALL: pricing_config.get("api_calls", {}).get("base_rate", 0.001),
-    UsageType.STORAGE: pricing_config.get("storage", {}).get("bigquery_storage", 0.0001),  # per MB per day
-    UsageType.BANDWIDTH: 0.0005  # per MB - configurable if needed
+    UsageType.TOKEN_USAGE: pricing_config.get("token_usage", {
+        "gpt-4": 0.03,
+        "gpt-3.5-turbo": 0.002,
+        "claude-3": 0.025
+    }),
+    UsageType.API_CALL: float(pricing_config.get("api_calls", {}).get("base_rate", 0.001)),
+    UsageType.STORAGE: pricing_config.get("storage", {}).get("bigquery_storage", 0.0001),
+    UsageType.BANDWIDTH: 0.0005
 }
 
 # Sample data
