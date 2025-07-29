@@ -4,7 +4,7 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["jq", "libxcrypt", "libyaml"]
+packages = ["glibcLocales", "jq", "libxcrypt", "libyaml"]
 
 [deployment]
 deploymentTarget = "autoscale"
@@ -61,4 +61,4 @@ localPort = 8007
 externalPort = 5000
 
 [agent]
-integrations = ["javascript_database==1.0.0"]
+integrations = ["javascript_database==1.0.0", "javascript_openai==1.0.0"]

@@ -167,6 +167,16 @@ else:
 # Initialize LLM client
 llm_client = LLMClient()
 
+# Import RAG system
+try:
+    sys.path.append(str(Path(__file__).parent.parent / "shared"))
+    from rag_system import rag_system
+    RAG_AVAILABLE = True
+    logger.info("RAG system initialized successfully")
+except Exception as e:
+    RAG_AVAILABLE = False
+    logger.warning(f"RAG system not available: {e}")
+
 # In-memory storage (fallback or development)
 agents_db: List[Agent] = []
 

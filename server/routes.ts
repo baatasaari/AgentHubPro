@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertAgentSchema, insertConversationSchema } from "@shared/schema";
 import { z } from "zod";
+import { ragRoutes } from "./rag";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Agent routes
@@ -200,6 +201,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(stats);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch usage stats" });
+    }
+  });
+
+  // RAG endpoints
+  app.get("/api/rag/health", ragRoutes.health);
+  app.get("/api/rag/stats", ragRoutes.stats);
+  app.post("/api/rag/query", ragRoutes.query);
+  app.post("/api/rag/search", ragRoutes.search);
+  app.post("/api/rag/documents", ragRoutes.addDocument);
+
+  // Enhanced agent chat with RAG
+  app.post("/api/agents/:id/chat", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid agent ID" });
+      }
+
+      const { query } = req.body;
+      if (!query) {
+        return res.status(400).json({ message: "Query is required" });
+      }
+
+      // Get agent
+      const agent = await storage.getAgent(id);
+      if (!agent) {
+        return res.status(404).json({ message: "Agent not found" });
+      }
+
+      // Use RAG system to generate response
+      const ragRequest = { query, agent_id: id.toString() };
+      
+      // Call ragRoutes.query but capture the result
+      let ragResponse;
+      const mockRes = {
+        json: (data: any) => { ragResponse = data; },
+        status: (code: number) => ({ json: (data: any) => { ragResponse = { error: data, status: code }; } })
+      };
+      
+      await ragRoutes.query({ body: ragRequest } as any, mockRes as any);
+      
+      if ((ragResponse as any)?.error) {
+        // Fallback to simple response
+        ragResponse = {
+          query,
+          response: `Hello! I'm ${agent.businessName}, your ${agent.industry} assistant. I'd be happy to help you with: ${query}`,
+          sources: [],
+          agent_id: id.toString(),
+          timestamp: new Date().toISOString(),
+          rag_enhanced: false
+        };
+      }
+
+      res.json({
+        ...ragResponse,
+        agent: {
+          id: agent.id,
+          businessName: agent.businessName,
+          industry: agent.industry,
+          llmModel: agent.llmModel,
+          interfaceType: agent.interfaceType
+        }
+      });
+    } catch (error) {
+      console.error('Agent chat failed:', error);
+      res.status(500).json({ message: "Chat failed" });
     }
   });
 

@@ -8,6 +8,7 @@ import Agents from "@/pages/agents";
 import MyAgents from "@/pages/my-agents";
 import Billing from "@/pages/billing";
 import Analytics from "@/pages/analytics";
+import RAGManagement from "@/pages/rag-management"; 
 import Navigation from "@/components/navigation";
 import NotFound from "@/pages/not-found";
 
@@ -21,6 +22,7 @@ function Router() {
         <Route path="/my-agents" component={MyAgents} />
         <Route path="/analytics" component={Analytics} />
         <Route path="/billing" component={Billing} />
+        <Route path="/rag" component={RAGManagement} />
         <Route component={NotFound} />
       </Switch>
     </div>
