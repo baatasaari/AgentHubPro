@@ -1,0 +1,136 @@
+---
+# Application Settings for Agent Wizard Microservice
+# Configurable settings for validation, features, and behavior
+
+# Validation Configuration
+validation:
+  business_name:
+    min_length: "${BUSINESS_NAME_MIN_LENGTH:2}"
+    max_length: "${BUSINESS_NAME_MAX_LENGTH:100}"
+    pattern: "^[a-zA-Z0-9\\s\\-\\.&']+$"
+    
+  business_description:
+    min_length: "${BUSINESS_DESC_MIN_LENGTH:10}"
+    max_length: "${BUSINESS_DESC_MAX_LENGTH:500}"
+    
+  business_domain:
+    require_protocol: "${REQUIRE_DOMAIN_PROTOCOL:true}"
+    allowed_protocols: ["http://", "https://"]
+    
+  agent_limits:
+    max_agents_per_user: "${MAX_AGENTS_PER_USER:50}"
+    max_agents_total: "${MAX_AGENTS_TOTAL:10000}"
+
+# Storage Configuration  
+storage:
+  use_bigquery: "${USE_BIGQUERY:false}"
+  fallback_to_memory: "${FALLBACK_TO_MEMORY:true}"
+  cache_enabled: "${CACHE_ENABLED:true}"
+  cache_ttl_seconds: "${CACHE_TTL:300}"
+
+# Feature Flags
+features:
+  enable_model_validation: "${ENABLE_MODEL_VALIDATION:true}"
+  enable_interface_validation: "${ENABLE_INTERFACE_VALIDATION:true}"
+  enable_system_prompt_generation: "${ENABLE_SYSTEM_PROMPT_GEN:true}"
+  enable_real_time_chat: "${ENABLE_REAL_TIME_CHAT:true}"
+  enable_usage_tracking: "${ENABLE_USAGE_TRACKING:true}"
+  enable_cost_monitoring: "${ENABLE_COST_MONITORING:true}"
+  enable_rate_limiting: "${ENABLE_RATE_LIMITING:true}"
+  enable_audit_logging: "${ENABLE_AUDIT_LOGGING:false}"
+
+# API Configuration
+api:
+  # Rate limiting
+  rate_limits:
+    requests_per_minute: "${API_RATE_LIMIT_RPM:1000}"
+    requests_per_hour: "${API_RATE_LIMIT_RPH:10000}"
+    burst_limit: "${API_BURST_LIMIT:100}"
+    
+  # Timeouts
+  timeouts:
+    default_timeout_seconds: "${API_DEFAULT_TIMEOUT:30}"
+    llm_timeout_seconds: "${LLM_TIMEOUT:60}"
+    database_timeout_seconds: "${DB_TIMEOUT:10}"
+    
+  # CORS settings
+  cors:
+    allow_origins: "${CORS_ORIGINS:*}"
+    allow_credentials: "${CORS_CREDENTIALS:true}"
+    allow_methods: "${CORS_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}"
+    allow_headers: "${CORS_HEADERS:*}"
+
+# Environment Settings
+environment:
+  name: "${ENVIRONMENT:development}"
+  debug_mode: "${DEBUG_MODE:true}"
+  log_level: "${LOG_LEVEL:INFO}"
+  enable_metrics: "${ENABLE_METRICS:true}"
+  
+# Security Settings
+security:
+  api_key_required: "${API_KEY_REQUIRED:false}"
+  jwt_enabled: "${JWT_ENABLED:false}"
+  request_signing: "${REQUEST_SIGNING:false}"
+  input_sanitization: "${INPUT_SANITIZATION:true}"
+  xss_protection: "${XSS_PROTECTION:true}"
+  
+# Performance Settings
+performance:
+  # Caching
+  response_cache_enabled: "${RESPONSE_CACHE:true}"
+  response_cache_ttl: "${RESPONSE_CACHE_TTL:60}"
+  
+  # Connection pooling
+  max_db_connections: "${MAX_DB_CONNECTIONS:20}"
+  connection_timeout: "${CONNECTION_TIMEOUT:5}"
+  
+  # Request processing
+  max_request_size_mb: "${MAX_REQUEST_SIZE:10}"
+  max_concurrent_requests: "${MAX_CONCURRENT_REQUESTS:100}"
+
+# Monitoring and Analytics
+monitoring:
+  health_check_enabled: "${HEALTH_CHECK_ENABLED:true}"
+  metrics_collection: "${METRICS_COLLECTION:true}"
+  error_reporting: "${ERROR_REPORTING:true}"
+  performance_tracking: "${PERF_TRACKING:true}"
+  
+  # Alerts
+  alerts:
+    high_error_rate_threshold: "${ALERT_ERROR_RATE:0.05}"
+    slow_response_threshold_ms: "${ALERT_SLOW_RESPONSE:2000}"
+    high_memory_threshold_mb: "${ALERT_HIGH_MEMORY:512}"
+
+# Development Settings
+development:
+  hot_reload: "${HOT_RELOAD:true}"
+  debug_sql: "${DEBUG_SQL:false}"
+  mock_llm_responses: "${MOCK_LLM:false}"
+  sample_data_enabled: "${SAMPLE_DATA:true}"
+  test_mode: "${TEST_MODE:false}"
+
+# Backup and Recovery
+backup:
+  enabled: "${BACKUP_ENABLED:false}"
+  interval_hours: "${BACKUP_INTERVAL:24}"
+  retention_days: "${BACKUP_RETENTION:7}"
+  storage_location: "${BACKUP_LOCATION:./backups}"
+
+# Integration Settings
+integrations:
+  # External APIs
+  google_analytics: "${GA_ENABLED:false}"
+  sentry_dsn: "${SENTRY_DSN:}"
+  slack_webhook: "${SLACK_WEBHOOK:}"
+  
+  # Webhooks
+  webhooks:
+    enabled: "${WEBHOOKS_ENABLED:false}"
+    timeout_seconds: "${WEBHOOK_TIMEOUT:10}"
+    retry_attempts: "${WEBHOOK_RETRIES:3}"
+
+# Configuration metadata
+config_version: "1.0.0"
+last_updated: "2025-07-29"
+format_version: "yaml-1.2"
