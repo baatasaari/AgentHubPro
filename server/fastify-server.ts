@@ -8,6 +8,7 @@ import { join } from 'path';
 import { storage } from './storage';
 import { insertAgentSchema, insertConversationSchema } from '@shared/schema';
 import { ragRoutes } from './rag';
+import { getIndustryAgentResponse, loadAllIndustryKnowledge } from './industry-knowledge';
 
 // Create Fastify instance with logging
 const fastify = Fastify({
@@ -408,29 +409,8 @@ async function registerAgentRoutes() {
         return { message: 'Agent not found' };
       }
 
-      // Use RAG system to generate response
-      const ragRequest = { query, agent_id: id.toString() };
-      
-      // Call ragRoutes.query but capture the result
-      let ragResponse: any;
-      const mockRes = {
-        json: (data: any) => { ragResponse = data; },
-        status: (code: number) => ({ json: (data: any) => { ragResponse = { error: data, status: code }; } })
-      };
-      
-      await ragRoutes.query({ body: ragRequest } as any, mockRes as any);
-      
-      if ((ragResponse as any)?.error) {
-        // Fallback to simple response
-        ragResponse = {
-          query,
-          response: `Hello! I'm ${agent.businessName}, your ${agent.industry} assistant. I'd be happy to help you with: ${query}`,
-          sources: [],
-          agent_id: id.toString(),
-          timestamp: new Date().toISOString(),
-          rag_enhanced: false
-        };
-      }
+      // Use industry-specific RAG system to generate enhanced response
+      const ragResponse = await getIndustryAgentResponse(query, agent.industry, agent);
 
       return {
         ...ragResponse,
