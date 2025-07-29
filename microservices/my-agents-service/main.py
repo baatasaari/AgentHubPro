@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """
 My Agents Service - Efficient Agent Management
-Streamlined FastAPI service for agent CRUD operations and lifecycle management
+Streamlined FastAPI service for agent CRUD operations with configurable validation and limits
 """
+
+import sys
+import os
+from pathlib import Path
+
+# Add shared directory to path
+sys.path.append(str(Path(__file__).parent.parent / "shared"))
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,9 +18,37 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
 import uuid
+import logging
 
-app = FastAPI(title="My Agents Service", version="1.0.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# Import configuration manager
+from config_manager import get_config
+
+# Initialize configuration
+config = get_config("my-agents", str(Path(__file__).parent.parent / "shared" / "config"))
+service_config = config.get_service_config()
+
+# Setup logging
+logging.basicConfig(
+    level=getattr(logging, config.get_app_setting("monitoring.log_level", "INFO")),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="My Agents Service",
+    version="1.0.0",
+    debug=service_config.debug
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=service_config.cors_origins,
+    allow_credentials=config.get_app_setting("api.cors.allow_credentials", True),
+    allow_methods=config.get_app_setting("api.cors.allow_methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS").split(","),
+    allow_headers=config.get_app_setting("api.cors.allow_headers", "*").split(",")
+)
 
 # Models
 class AgentStatus(str, Enum):
@@ -47,32 +82,63 @@ class AgentUpdate(BaseModel):
 # Storage
 agents_db: Dict[str, Agent] = {}
 
-# Sample data
+# Sample data (only if enabled)
 def init_sample_agents():
-    sample_agents = [
-        {"business_name": "TechFlow Solutions", "industry": "technology", "llm_model": "gpt-4", "interface_type": "webchat"},
-        {"business_name": "HealthCare Plus", "industry": "healthcare", "llm_model": "gpt-4", "interface_type": "whatsapp"},
-        {"business_name": "Elite Fitness", "industry": "fitness", "llm_model": "gpt-3.5-turbo", "interface_type": "webchat"}
-    ]
-    
-    for i, data in enumerate(sample_agents, 1):
-        agent_id = str(i)
-        agent = Agent(
-            id=agent_id,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-            status=AgentStatus.ACTIVE,
-            performance_metrics={"conversations": i * 10, "satisfaction": 4.2 + (i * 0.1)},
-            **data
-        )
-        agents_db[agent_id] = agent
+    if config.is_feature_enabled("enable_mock_data"):
+        sample_agents = [
+            {"business_name": "TechFlow Solutions", "industry": "technology", "llm_model": "gpt-4", "interface_type": "webchat"},
+            {"business_name": "HealthCare Plus", "industry": "healthcare", "llm_model": "gpt-4", "interface_type": "whatsapp"},
+            {"business_name": "Elite Fitness", "industry": "fitness", "llm_model": "gpt-3.5-turbo", "interface_type": "webchat"}
+        ]
+        
+        for i, data in enumerate(sample_agents, 1):
+            agent_id = str(i)
+            agent = Agent(
+                id=agent_id,
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+                status=AgentStatus.ACTIVE,
+                performance_metrics={"conversations": i * 10, "satisfaction": 4.2 + (i * 0.1)},
+                **data
+            )
+            agents_db[agent_id] = agent
+        
+        logger.info(f"Initialized {len(sample_agents)} sample agents")
 
+# Initialize sample data if enabled
 init_sample_agents()
 
 # Endpoints
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "my-agents", "agents_count": len(agents_db)}
+    return {
+        "status": "healthy",
+        "service": "my-agents",
+        "agents_count": len(agents_db),
+        "environment": config.get_environment(),
+        "storage_type": config.get_storage_config().type
+    }
+
+# Configuration endpoints
+@app.get("/api/config/status")
+async def get_config_status():
+    """Get current configuration status"""
+    return config.get_status()
+
+@app.get("/api/config/reload")
+async def reload_configuration():
+    """Reload all configurations"""
+    try:
+        config.reload_all()
+        return {"message": "Configuration reloaded successfully", "status": "success"}
+    except Exception as e:
+        logger.error(f"Error reloading configuration: {e}")
+        raise HTTPException(status_code=500, detail="Failed to reload configuration")
+
+@app.get("/api/config/validation-rules")
+async def get_validation_rules():
+    """Get validation rules for agent creation"""
+    return config.get_validation_rules()
 
 @app.get("/api/agents", response_model=List[Agent])
 async def get_agents(

@@ -1,0 +1,302 @@
+---
+# Application Settings
+# Global application configuration for all microservices
+
+# Feature Flags
+features:
+  # Core features
+  enable_model_validation: "${ENABLE_MODEL_VALIDATION:true}"
+  enable_interface_validation: "${ENABLE_INTERFACE_VALIDATION:true}"
+  enable_system_prompt_generation: "${ENABLE_SYSTEM_PROMPT_GEN:true}"
+  enable_real_time_chat: "${ENABLE_REAL_TIME_CHAT:true}"
+  enable_usage_tracking: "${ENABLE_USAGE_TRACKING:true}"
+  enable_cost_monitoring: "${ENABLE_COST_MONITORING:true}"
+  enable_rate_limiting: "${ENABLE_RATE_LIMITING:true}"
+  enable_audit_logging: "${ENABLE_AUDIT_LOGGING:false}"
+  
+  # Analytics features
+  enable_advanced_analytics: "${ENABLE_ADVANCED_ANALYTICS:true}"
+  enable_customer_insights: "${ENABLE_CUSTOMER_INSIGHTS:true}"
+  enable_conversion_tracking: "${ENABLE_CONVERSION_TRACKING:true}"
+  enable_revenue_attribution: "${ENABLE_REVENUE_ATTRIBUTION:true}"
+  
+  # Billing features
+  enable_automated_billing: "${ENABLE_AUTO_BILLING:true}"
+  enable_payment_processing: "${ENABLE_PAYMENT_PROCESSING:false}"
+  enable_invoice_generation: "${ENABLE_INVOICE_GEN:true}"
+  enable_cost_estimation: "${ENABLE_COST_ESTIMATION:true}"
+  
+  # Widget features
+  enable_widget_customization: "${ENABLE_WIDGET_CUSTOM:true}"
+  enable_embed_code_generation: "${ENABLE_EMBED_CODE:true}"
+  enable_widget_analytics: "${ENABLE_WIDGET_ANALYTICS:true}"
+  
+  # Environment-specific features
+  development:
+    enable_debug_mode: true
+    enable_mock_data: true
+    enable_test_endpoints: true
+    
+  staging:
+    enable_debug_mode: false
+    enable_mock_data: false
+    enable_test_endpoints: true
+    
+  production:
+    enable_debug_mode: false
+    enable_mock_data: false
+    enable_test_endpoints: false
+
+# Validation Rules
+validation:
+  business_name:
+    min_length: "${BUSINESS_NAME_MIN_LENGTH:2}"
+    max_length: "${BUSINESS_NAME_MAX_LENGTH:100}"
+    pattern: "^[a-zA-Z0-9\\s\\-\\.&']+$"
+    
+  business_description:
+    min_length: "${BUSINESS_DESC_MIN_LENGTH:10}"
+    max_length: "${BUSINESS_DESC_MAX_LENGTH:500}"
+    
+  business_domain:
+    require_protocol: "${REQUIRE_DOMAIN_PROTOCOL:true}"
+    allowed_protocols: ["http://", "https://"]
+    max_length: "${DOMAIN_MAX_LENGTH:255}"
+    
+  agent_limits:
+    max_agents_per_user: "${MAX_AGENTS_PER_USER:50}"
+    max_agents_total: "${MAX_AGENTS_TOTAL:10000}"
+    
+  conversation_limits:
+    max_messages_per_conversation: "${MAX_MESSAGES_PER_CONV:1000}"
+    max_conversation_duration_hours: "${MAX_CONV_DURATION:24}"
+    
+  cost_limits:
+    max_daily_cost_usd: "${MAX_DAILY_COST:1000}"
+    max_monthly_cost_usd: "${MAX_MONTHLY_COST:10000}"
+
+# API Configuration
+api:
+  # Rate limiting
+  rate_limits:
+    requests_per_minute: "${API_RATE_LIMIT_RPM:1000}"
+    requests_per_hour: "${API_RATE_LIMIT_RPH:10000}"
+    burst_limit: "${API_BURST_LIMIT:100}"
+    
+  # Timeouts
+  timeouts:
+    default_timeout_seconds: "${API_DEFAULT_TIMEOUT:30}"
+    llm_timeout_seconds: "${LLM_TIMEOUT:60}"
+    database_timeout_seconds: "${DB_TIMEOUT:10}"
+    external_api_timeout: "${EXTERNAL_API_TIMEOUT:15}"
+    
+  # CORS settings
+  cors:
+    allow_origins: "${CORS_ORIGINS:*}"
+    allow_credentials: "${CORS_CREDENTIALS:true}"
+    allow_methods: "${CORS_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}"
+    allow_headers: "${CORS_HEADERS:*}"
+    
+  # Request/Response limits
+  limits:
+    max_request_size_mb: "${MAX_REQUEST_SIZE:10}"
+    max_response_size_mb: "${MAX_RESPONSE_SIZE:50}"
+    max_concurrent_requests: "${MAX_CONCURRENT_REQUESTS:100}"
+
+# Security Settings
+security:
+  # Authentication
+  api_key_required: "${API_KEY_REQUIRED:false}"
+  jwt_enabled: "${JWT_ENABLED:false}"
+  jwt_secret: "${JWT_SECRET:}"
+  jwt_expiry_hours: "${JWT_EXPIRY:24}"
+  
+  # Request security
+  request_signing: "${REQUEST_SIGNING:false}"
+  input_sanitization: "${INPUT_SANITIZATION:true}"
+  xss_protection: "${XSS_PROTECTION:true}"
+  csrf_protection: "${CSRF_PROTECTION:true}"
+  
+  # Data protection
+  encrypt_sensitive_data: "${ENCRYPT_SENSITIVE:true}"
+  mask_personal_data: "${MASK_PERSONAL_DATA:false}"
+  gdpr_compliance: "${GDPR_COMPLIANCE:true}"
+  
+  # Rate limiting security
+  ddos_protection: "${DDOS_PROTECTION:true}"
+  ip_whitelist_enabled: "${IP_WHITELIST:false}"
+  ip_whitelist: "${IP_WHITELIST_IPS:}"
+
+# Performance Settings
+performance:
+  # Caching
+  response_cache_enabled: "${RESPONSE_CACHE:true}"
+  response_cache_ttl: "${RESPONSE_CACHE_TTL:60}"
+  
+  # Connection pooling
+  max_db_connections: "${MAX_DB_CONNECTIONS:20}"
+  connection_timeout: "${CONNECTION_TIMEOUT:5}"
+  
+  # Compression
+  response_compression: "${RESPONSE_COMPRESSION:true}"
+  compression_threshold: "${COMPRESSION_THRESHOLD:1024}"
+  
+  # Optimization
+  enable_query_optimization: "${QUERY_OPTIMIZATION:true}"
+  enable_index_optimization: "${INDEX_OPTIMIZATION:true}"
+  enable_connection_pooling: "${CONNECTION_POOLING:true}"
+
+# Monitoring and Observability
+monitoring:
+  # Health checks
+  health_check_enabled: "${HEALTH_CHECK_ENABLED:true}"
+  health_check_interval: "${HEALTH_CHECK_INTERVAL:30}"
+  
+  # Metrics collection
+  metrics_collection: "${METRICS_COLLECTION:true}"
+  custom_metrics: "${CUSTOM_METRICS:true}"
+  performance_metrics: "${PERF_METRICS:true}"
+  
+  # Error tracking
+  error_reporting: "${ERROR_REPORTING:true}"
+  error_sampling_rate: "${ERROR_SAMPLING:1.0}"
+  
+  # Logging
+  log_level: "${LOG_LEVEL:INFO}"
+  log_format: "${LOG_FORMAT:json}"
+  log_requests: "${LOG_REQUESTS:false}"
+  log_responses: "${LOG_RESPONSES:false}"
+  
+  # Alerts
+  alerts:
+    high_error_rate_threshold: "${ALERT_ERROR_RATE:0.05}"
+    slow_response_threshold_ms: "${ALERT_SLOW_RESPONSE:2000}"
+    high_memory_threshold_mb: "${ALERT_HIGH_MEMORY:512}"
+    high_cpu_threshold_percent: "${ALERT_HIGH_CPU:80}"
+
+# Pricing Configuration
+pricing:
+  # Model pricing (per 1K tokens)
+  models:
+    gpt-4-turbo:
+      input: "${GPT4_TURBO_INPUT_PRICE:0.01}"
+      output: "${GPT4_TURBO_OUTPUT_PRICE:0.03}"
+    gpt-4:
+      input: "${GPT4_INPUT_PRICE:0.03}"
+      output: "${GPT4_OUTPUT_PRICE:0.06}"
+    gpt-3.5-turbo:
+      input: "${GPT35_INPUT_PRICE:0.0015}"
+      output: "${GPT35_OUTPUT_PRICE:0.002}"
+    claude-3.5-sonnet:
+      input: "${CLAUDE35_INPUT_PRICE:0.003}"
+      output: "${CLAUDE35_OUTPUT_PRICE:0.015}"
+    claude-3-opus:
+      input: "${CLAUDE3_OPUS_INPUT_PRICE:0.015}"
+      output: "${CLAUDE3_OPUS_OUTPUT_PRICE:0.075}"
+    claude-3-haiku:
+      input: "${CLAUDE3_HAIKU_INPUT_PRICE:0.00025}"
+      output: "${CLAUDE3_HAIKU_OUTPUT_PRICE:0.00125}"
+    gemini-1.5-pro:
+      input: "${GEMINI15_PRO_INPUT_PRICE:0.00125}"
+      output: "${GEMINI15_PRO_OUTPUT_PRICE:0.005}"
+    gemini-1.5-flash:
+      input: "${GEMINI15_FLASH_INPUT_PRICE:0.000075}"
+      output: "${GEMINI15_FLASH_OUTPUT_PRICE:0.0003}"
+    gemini-pro:
+      input: "${GEMINI_PRO_INPUT_PRICE:0.0005}"
+      output: "${GEMINI_PRO_OUTPUT_PRICE:0.0015}"
+  
+  # Usage pricing
+  api_calls:
+    base_rate: "${API_CALL_PRICE:0.001}"
+    bulk_discount_threshold: "${BULK_THRESHOLD:10000}"
+    bulk_discount_rate: "${BULK_DISCOUNT:0.0008}"
+  
+  # Storage pricing (per GB per month)
+  storage:
+    bigquery_storage: "${BQ_STORAGE_PRICE:0.02}"
+    bigquery_queries: "${BQ_QUERY_PRICE:5.00}"  # per TB processed
+    
+  # Platform pricing
+  platforms:
+    webchat: "${WEBCHAT_PRICE:0.01}"  # per message
+    whatsapp: "${WHATSAPP_PRICE:0.05}"  # per message
+    instagram: "${INSTAGRAM_PRICE:0.03}"  # per message
+
+# Integration Settings
+integrations:
+  # External APIs
+  google_analytics:
+    enabled: "${GA_ENABLED:false}"
+    tracking_id: "${GA_TRACKING_ID:}"
+    
+  sentry:
+    enabled: "${SENTRY_ENABLED:false}"
+    dsn: "${SENTRY_DSN:}"
+    environment: "${SENTRY_ENVIRONMENT:development}"
+    
+  slack:
+    enabled: "${SLACK_ENABLED:false}"
+    webhook_url: "${SLACK_WEBHOOK:}"
+    
+  webhooks:
+    enabled: "${WEBHOOKS_ENABLED:false}"
+    timeout_seconds: "${WEBHOOK_TIMEOUT:10}"
+    retry_attempts: "${WEBHOOK_RETRIES:3}"
+    
+  # Payment gateways
+  stripe:
+    enabled: "${STRIPE_ENABLED:false}"
+    public_key: "${STRIPE_PUBLIC_KEY:}"
+    webhook_secret: "${STRIPE_WEBHOOK_SECRET:}"
+
+# Backup and Recovery
+backup:
+  enabled: "${BACKUP_ENABLED:false}"
+  schedule: "${BACKUP_SCHEDULE:0 2 * * *}"  # Daily at 2 AM
+  retention_days: "${BACKUP_RETENTION:30}"
+  storage_location: "${BACKUP_LOCATION:./backups}"
+  encryption_enabled: "${BACKUP_ENCRYPTION:true}"
+
+# Development Settings
+development:
+  hot_reload: "${HOT_RELOAD:true}"
+  debug_sql: "${DEBUG_SQL:false}"
+  mock_external_apis: "${MOCK_EXTERNAL_APIS:true}"
+  sample_data_enabled: "${SAMPLE_DATA:true}"
+  test_mode: "${TEST_MODE:false}"
+  
+  # Testing
+  test_timeout_seconds: "${TEST_TIMEOUT:60}"
+  test_parallel_workers: "${TEST_WORKERS:4}"
+  
+  # Mock data
+  mock_data:
+    generate_conversations: "${MOCK_CONVERSATIONS:true}"
+    generate_analytics: "${MOCK_ANALYTICS:true}"
+    generate_billing_data: "${MOCK_BILLING:true}"
+
+# Deployment Settings
+deployment:
+  # Environment detection
+  auto_detect_environment: "${AUTO_DETECT_ENV:true}"
+  
+  # Health checks
+  startup_probe_delay: "${STARTUP_PROBE_DELAY:10}"
+  readiness_probe_delay: "${READINESS_PROBE_DELAY:5}"
+  liveness_probe_delay: "${LIVENESS_PROBE_DELAY:30}"
+  
+  # Resource limits
+  memory_limit_mb: "${MEMORY_LIMIT:512}"
+  cpu_limit_cores: "${CPU_LIMIT:1.0}"
+  
+  # Scaling
+  auto_scaling_enabled: "${AUTO_SCALING:false}"
+  min_replicas: "${MIN_REPLICAS:1}"
+  max_replicas: "${MAX_REPLICAS:10}"
+  cpu_threshold_percent: "${CPU_THRESHOLD:70}"
+
+# Configuration metadata
+version: "1.0.0"
+last_updated: "2025-07-29"
+schema_version: "app-settings-v1"

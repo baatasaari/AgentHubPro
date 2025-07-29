@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """
 Widget Service - Customization & Code Generation
-Efficient service for widget configuration and embed code generation
+Efficient service for widget configuration and embed code generation with configurable templates
 """
+
+import sys
+import os
+from pathlib import Path
+
+# Add shared directory to path
+sys.path.append(str(Path(__file__).parent.parent / "shared"))
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,9 +18,37 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
 import uuid
+import logging
 
-app = FastAPI(title="Widget Service", version="1.0.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# Import configuration manager
+from config_manager import get_config
+
+# Initialize configuration
+config = get_config("widget", str(Path(__file__).parent.parent / "shared" / "config"))
+service_config = config.get_service_config()
+
+# Setup logging
+logging.basicConfig(
+    level=getattr(logging, config.get_app_setting("monitoring.log_level", "INFO")),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="Widget Service",
+    version="1.0.0",
+    debug=service_config.debug
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=service_config.cors_origins,
+    allow_credentials=config.get_app_setting("api.cors.allow_credentials", True),
+    allow_methods=config.get_app_setting("api.cors.allow_methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS").split(","),
+    allow_headers=config.get_app_setting("api.cors.allow_headers", "*").split(",")
+)
 
 # Models
 class WidgetPosition(str, Enum):
@@ -64,46 +99,50 @@ class WidgetUpdate(BaseModel):
 # Storage
 widgets_db: Dict[str, WidgetConfig] = {}
 
-# Sample data
+# Sample data (only if enabled)
 def init_sample_widgets():
-    sample_widgets = [
-        {
-            "agent_id": "1",
-            "primary_color": "#10B981",
-            "position": WidgetPosition.BOTTOM_RIGHT,
-            "welcome_message": "Welcome to HealthCare Plus! How can I assist you today?",
-            "theme": WidgetTheme.LIGHT,
-            "auto_open": False
-        },
-        {
-            "agent_id": "2", 
-            "primary_color": "#3B82F6",
-            "position": WidgetPosition.BOTTOM_LEFT,
-            "welcome_message": "Hi! Need help with technology solutions?",
-            "theme": WidgetTheme.DARK,
-            "auto_open": True
-        },
-        {
-            "agent_id": "3",
-            "primary_color": "#EF4444",
-            "position": WidgetPosition.BOTTOM_RIGHT,
-            "welcome_message": "Ready to start your fitness journey?",
-            "theme": WidgetTheme.AUTO,
-            "auto_open": False
-        }
-    ]
-    
-    for i, data in enumerate(sample_widgets, 1):
-        widget_id = str(i)
-        now = datetime.now()
-        widget = WidgetConfig(
-            id=widget_id,
-            created_at=now,
-            updated_at=now,
-            **data
-        )
-        widgets_db[widget_id] = widget
+    if config.is_feature_enabled("enable_mock_data"):
+        sample_widgets = [
+            {
+                "agent_id": "1",
+                "primary_color": "#10B981",
+                "position": WidgetPosition.BOTTOM_RIGHT,
+                "welcome_message": "Welcome to HealthCare Plus! How can I assist you today?",
+                "theme": WidgetTheme.LIGHT,
+                "auto_open": False
+            },
+            {
+                "agent_id": "2", 
+                "primary_color": "#3B82F6",
+                "position": WidgetPosition.BOTTOM_LEFT,
+                "welcome_message": "Hi! Need help with technology solutions?",
+                "theme": WidgetTheme.DARK,
+                "auto_open": True
+            },
+            {
+                "agent_id": "3",
+                "primary_color": "#EF4444",
+                "position": WidgetPosition.BOTTOM_RIGHT,
+                "welcome_message": "Ready to start your fitness journey?",
+                "theme": WidgetTheme.AUTO,
+                "auto_open": False
+            }
+        ]
+        
+        for i, data in enumerate(sample_widgets, 1):
+            widget_id = str(i)
+            now = datetime.now()
+            widget = WidgetConfig(
+                id=widget_id,
+                created_at=now,
+                updated_at=now,
+                **data
+            )
+            widgets_db[widget_id] = widget
+        
+        logger.info(f"Initialized {len(sample_widgets)} sample widgets")
 
+# Initialize sample data if enabled
 init_sample_widgets()
 
 # Helper functions
@@ -192,7 +231,29 @@ def generate_widget_css(widget: WidgetConfig) -> str:
 # Endpoints
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "widget", "widgets_count": len(widgets_db)}
+    return {
+        "status": "healthy",
+        "service": "widget",
+        "widgets_count": len(widgets_db),
+        "environment": config.get_environment(),
+        "storage_type": config.get_storage_config().type
+    }
+
+# Configuration endpoints
+@app.get("/api/config/status")
+async def get_config_status():
+    """Get current configuration status"""
+    return config.get_status()
+
+@app.get("/api/config/reload")
+async def reload_configuration():
+    """Reload all configurations"""
+    try:
+        config.reload_all()
+        return {"message": "Configuration reloaded successfully", "status": "success"}
+    except Exception as e:
+        logger.error(f"Error reloading configuration: {e}")
+        raise HTTPException(status_code=500, detail="Failed to reload configuration")
 
 @app.get("/api/widgets", response_model=List[WidgetConfig])
 async def get_widgets(agent_id: Optional[str] = None):

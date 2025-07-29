@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """
 Billing Service - Cost Tracking & Payment Management
-Efficient service for tracking usage costs and managing billing
+Efficient service for tracking usage costs and managing billing with configurable pricing
 """
+
+import sys
+import os
+from pathlib import Path
+
+# Add shared directory to path
+sys.path.append(str(Path(__file__).parent.parent / "shared"))
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,9 +18,37 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from enum import Enum
 import uuid
+import logging
 
-app = FastAPI(title="Billing Service", version="1.0.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# Import configuration manager
+from config_manager import get_config
+
+# Initialize configuration
+config = get_config("billing", str(Path(__file__).parent.parent / "shared" / "config"))
+service_config = config.get_service_config()
+
+# Setup logging
+logging.basicConfig(
+    level=getattr(logging, config.get_app_setting("monitoring.log_level", "INFO")),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="Billing Service",
+    version="1.0.0",
+    debug=service_config.debug
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=service_config.cors_origins,
+    allow_credentials=config.get_app_setting("api.cors.allow_credentials", True),
+    allow_methods=config.get_app_setting("api.cors.allow_methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS").split(","),
+    allow_headers=config.get_app_setting("api.cors.allow_headers", "*").split(",")
+)
 
 # Models
 class UsageType(str, Enum):
@@ -58,12 +93,13 @@ class CostEstimate(BaseModel):
 usage_records_db: Dict[str, UsageRecord] = {}
 invoices_db: Dict[str, Invoice] = {}
 
-# Pricing configuration
+# Get pricing configuration from config
+pricing_config = config.get_pricing_config()
 PRICING = {
-    UsageType.TOKEN_USAGE: {"gpt-4": 0.00002, "gpt-3.5-turbo": 0.000001, "claude-3": 0.000015},
-    UsageType.API_CALL: 0.001,
-    UsageType.STORAGE: 0.0001,  # per MB per day
-    UsageType.BANDWIDTH: 0.0005  # per MB
+    UsageType.TOKEN_USAGE: pricing_config.get("models", {}),
+    UsageType.API_CALL: pricing_config.get("api_calls", {}).get("base_rate", 0.001),
+    UsageType.STORAGE: pricing_config.get("storage", {}).get("bigquery_storage", 0.0001),  # per MB per day
+    UsageType.BANDWIDTH: 0.0005  # per MB - configurable if needed
 }
 
 # Sample data
@@ -159,7 +195,34 @@ def calculate_usage_summary(usage_records: List[UsageRecord]) -> Dict[str, Any]:
 # Endpoints
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "billing", "usage_records": len(usage_records_db)}
+    return {
+        "status": "healthy",
+        "service": "billing",
+        "usage_records": len(usage_records_db),
+        "environment": config.get_environment(),
+        "storage_type": config.get_storage_config().type
+    }
+
+# Configuration endpoints
+@app.get("/api/config/status")
+async def get_config_status():
+    """Get current configuration status"""
+    return config.get_status()
+
+@app.get("/api/config/reload")
+async def reload_configuration():
+    """Reload all configurations"""
+    try:
+        config.reload_all()
+        return {"message": "Configuration reloaded successfully", "status": "success"}
+    except Exception as e:
+        logger.error(f"Error reloading configuration: {e}")
+        raise HTTPException(status_code=500, detail="Failed to reload configuration")
+
+@app.get("/api/config/pricing")
+async def get_pricing_config():
+    """Get current pricing configuration"""
+    return config.get_pricing_config()
 
 @app.post("/api/billing/usage")
 async def track_usage(usage: UsageRecord):

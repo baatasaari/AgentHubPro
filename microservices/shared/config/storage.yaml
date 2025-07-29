@@ -1,0 +1,192 @@
+---
+# Storage Configuration
+# Defines storage backends and database configurations
+
+storage:
+  # Storage type selection
+  type: "${STORAGE_TYPE:memory}"  # memory, bigquery, postgresql
+  
+  # Connection pooling
+  pool_size: "${STORAGE_POOL_SIZE:10}"
+  timeout: "${STORAGE_TIMEOUT:10}"
+  
+  # Environment-specific overrides
+  development:
+    type: "memory"
+    pool_size: 5
+    
+  staging:
+    type: "${STAGING_STORAGE_TYPE:bigquery}"
+    pool_size: 20
+    
+  production:
+    type: "${PRODUCTION_STORAGE_TYPE:bigquery}"
+    pool_size: 50
+
+# Database Configuration
+database:
+  # BigQuery settings
+  use_bigquery: "${USE_BIGQUERY:false}"
+  project_id: "${GOOGLE_CLOUD_PROJECT_ID:}"
+  dataset_id: "${BIGQUERY_DATASET_ID:agenthub}"
+  location: "${BIGQUERY_LOCATION:us-central1}"
+  fallback_to_memory: "${FALLBACK_TO_MEMORY:true}"
+  
+  # Environment-specific database configs
+  development:
+    use_bigquery: false
+    dataset_id: "agenthub_dev"
+    fallback_to_memory: true
+    
+  staging:
+    use_bigquery: "${STAGING_USE_BIGQUERY:true}"
+    dataset_id: "agenthub_staging"
+    fallback_to_memory: true
+    
+  production:
+    use_bigquery: "${PRODUCTION_USE_BIGQUERY:true}"
+    dataset_id: "agenthub_prod"
+    fallback_to_memory: false
+
+# PostgreSQL Configuration
+postgresql:
+  enabled: "${POSTGRESQL_ENABLED:false}"
+  host: "${PGHOST:localhost}"
+  port: "${PGPORT:5432}"
+  database: "${PGDATABASE:agenthub}"
+  username: "${PGUSER:postgres}"
+  password: "${PGPASSWORD:}"
+  ssl_mode: "${PGSSLMODE:prefer}"
+  
+  # Connection pool settings
+  min_connections: "${PG_MIN_CONN:1}"
+  max_connections: "${PG_MAX_CONN:20}"
+  connection_timeout: "${PG_CONN_TIMEOUT:10}"
+
+# Caching Configuration
+cache:
+  enabled: "${CACHE_ENABLED:true}"
+  type: "${CACHE_TYPE:memory}"  # memory, redis
+  ttl_seconds: "${CACHE_TTL:300}"
+  
+  # Redis settings (if using Redis cache)
+  redis:
+    host: "${REDIS_HOST:localhost}"
+    port: "${REDIS_PORT:6379}"
+    password: "${REDIS_PASSWORD:}"
+    db: "${REDIS_DB:0}"
+    
+  # Environment-specific cache configs
+  development:
+    enabled: true
+    type: "memory"
+    ttl_seconds: 60
+    
+  staging:
+    enabled: true
+    type: "${STAGING_CACHE_TYPE:memory}"
+    ttl_seconds: 300
+    
+  production:
+    enabled: true
+    type: "${PRODUCTION_CACHE_TYPE:redis}"
+    ttl_seconds: 3600
+
+# Data Retention Policies
+retention:
+  # Conversation data
+  conversations:
+    days: "${CONVERSATION_RETENTION_DAYS:365}"
+    archive_after_days: "${CONVERSATION_ARCHIVE_DAYS:90}"
+    
+  # Analytics data
+  analytics:
+    days: "${ANALYTICS_RETENTION_DAYS:1095}"  # 3 years
+    aggregate_after_days: "${ANALYTICS_AGGREGATE_DAYS:30}"
+    
+  # Billing data
+  billing:
+    days: "${BILLING_RETENTION_DAYS:2555}"  # 7 years
+    archive_after_days: "${BILLING_ARCHIVE_DAYS:365}"
+    
+  # Logs
+  logs:
+    days: "${LOG_RETENTION_DAYS:90}"
+    archive_after_days: "${LOG_ARCHIVE_DAYS:30}"
+
+# Backup Configuration
+backup:
+  enabled: "${BACKUP_ENABLED:false}"
+  frequency: "${BACKUP_FREQUENCY:daily}"  # hourly, daily, weekly
+  retention_days: "${BACKUP_RETENTION:30}"
+  
+  # Backup storage
+  storage_type: "${BACKUP_STORAGE_TYPE:cloud}"  # local, cloud, s3
+  storage_location: "${BACKUP_LOCATION:}"
+  
+  # Encryption
+  encryption_enabled: "${BACKUP_ENCRYPTION:true}"
+  encryption_key: "${BACKUP_ENCRYPTION_KEY:}"
+
+# Data Migration Settings
+migration:
+  enabled: "${MIGRATION_ENABLED:false}"
+  auto_migrate: "${AUTO_MIGRATE:false}"
+  backup_before_migration: "${MIGRATION_BACKUP:true}"
+  
+  # Schema versioning
+  current_version: "${SCHEMA_VERSION:1.0.0}"
+  target_version: "${TARGET_SCHEMA_VERSION:}"
+
+# Performance Optimization
+performance:
+  # Query optimization
+  query_timeout_seconds: "${QUERY_TIMEOUT:30}"
+  max_query_size_mb: "${MAX_QUERY_SIZE:100}"
+  
+  # Indexing
+  auto_index: "${AUTO_INDEX:true}"
+  index_maintenance: "${INDEX_MAINTENANCE:true}"
+  
+  # Partitioning (for BigQuery)
+  partitioning:
+    enabled: "${PARTITIONING_ENABLED:true}"
+    field: "${PARTITION_FIELD:timestamp}"
+    type: "${PARTITION_TYPE:DAY}"
+
+# Monitoring and Observability
+monitoring:
+  # Storage metrics
+  collect_metrics: "${STORAGE_METRICS:true}"
+  metrics_interval_seconds: "${METRICS_INTERVAL:60}"
+  
+  # Query logging
+  log_queries: "${LOG_QUERIES:false}"
+  log_slow_queries: "${LOG_SLOW_QUERIES:true}"
+  slow_query_threshold_ms: "${SLOW_QUERY_THRESHOLD:1000}"
+  
+  # Health checks
+  health_check_interval: "${STORAGE_HEALTH_INTERVAL:30}"
+  health_check_timeout: "${STORAGE_HEALTH_TIMEOUT:5}"
+
+# Security Settings
+security:
+  # Encryption at rest
+  encryption_at_rest: "${ENCRYPTION_AT_REST:true}"
+  
+  # Access control
+  row_level_security: "${ROW_LEVEL_SECURITY:false}"
+  column_level_security: "${COLUMN_LEVEL_SECURITY:false}"
+  
+  # Audit logging
+  audit_enabled: "${AUDIT_ENABLED:false}"
+  audit_table: "${AUDIT_TABLE:audit_log}"
+  
+  # Data masking
+  data_masking_enabled: "${DATA_MASKING:false}"
+  mask_sensitive_fields: "${MASK_SENSITIVE:true}"
+
+# Configuration metadata
+version: "1.0.0"
+last_updated: "2025-07-29"
+schema_version: "storage-v1"

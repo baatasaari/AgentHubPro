@@ -1,0 +1,191 @@
+---
+# Services Configuration
+# Defines all microservices in the platform with their configurations
+
+services:
+  agent-wizard:
+    port: "${AGENT_WIZARD_PORT:8001}"
+    host: "${AGENT_WIZARD_HOST:0.0.0.0}"
+    debug: "${AGENT_WIZARD_DEBUG:true}"
+    timeout: "${AGENT_WIZARD_TIMEOUT:30}"
+    cors_origins: "${AGENT_WIZARD_CORS:*}"
+    
+    # Environment-specific overrides
+    development:
+      debug: true
+      port: 8001
+      host: "0.0.0.0"
+      
+    staging:
+      debug: false
+      port: 8001
+      host: "0.0.0.0"
+      
+    production:
+      debug: false
+      port: "${PORT:8001}"
+      host: "0.0.0.0"
+
+  analytics:
+    port: "${ANALYTICS_PORT:8002}"
+    host: "${ANALYTICS_HOST:0.0.0.0}" 
+    debug: "${ANALYTICS_DEBUG:true}"
+    timeout: "${ANALYTICS_TIMEOUT:30}"
+    cors_origins: "${ANALYTICS_CORS:*}"
+    
+    development:
+      debug: true
+      port: 8002
+      
+    staging:
+      debug: false
+      port: 8002
+      
+    production:
+      debug: false
+      port: "${PORT:8002}"
+
+  billing:
+    port: "${BILLING_PORT:8003}"
+    host: "${BILLING_HOST:0.0.0.0}"
+    debug: "${BILLING_DEBUG:true}"
+    timeout: "${BILLING_TIMEOUT:30}"
+    cors_origins: "${BILLING_CORS:*}"
+    
+    development:
+      debug: true
+      port: 8003
+      
+    staging:
+      debug: false
+      port: 8003
+      
+    production:
+      debug: false
+      port: "${PORT:8003}"
+
+  dashboard:
+    port: "${DASHBOARD_PORT:8004}"
+    host: "${DASHBOARD_HOST:0.0.0.0}"
+    debug: "${DASHBOARD_DEBUG:true}"
+    timeout: "${DASHBOARD_TIMEOUT:30}"
+    cors_origins: "${DASHBOARD_CORS:*}"
+    
+    development:
+      debug: true
+      port: 8004
+      
+    staging:
+      debug: false
+      port: 8004
+      
+    production:
+      debug: false
+      port: "${PORT:8004}"
+
+  widget:
+    port: "${WIDGET_PORT:8005}"
+    host: "${WIDGET_HOST:0.0.0.0}"
+    debug: "${WIDGET_DEBUG:true}"
+    timeout: "${WIDGET_TIMEOUT:30}"
+    cors_origins: "${WIDGET_CORS:*}"
+    
+    development:
+      debug: true
+      port: 8005
+      
+    staging:
+      debug: false
+      port: 8005
+      
+    production:
+      debug: false
+      port: "${PORT:8005}"
+
+  my-agents:
+    port: "${MY_AGENTS_PORT:8006}"
+    host: "${MY_AGENTS_HOST:0.0.0.0}"
+    debug: "${MY_AGENTS_DEBUG:true}"
+    timeout: "${MY_AGENTS_TIMEOUT:30}"
+    cors_origins: "${MY_AGENTS_CORS:*}"
+    
+    development:
+      debug: true
+      port: 8006
+      
+    staging:
+      debug: false
+      port: 8006
+      
+    production:
+      debug: false
+      port: "${PORT:8006}"
+
+  insights:
+    port: "${INSIGHTS_PORT:8007}"
+    host: "${INSIGHTS_HOST:0.0.0.0}"
+    debug: "${INSIGHTS_DEBUG:true}"
+    timeout: "${INSIGHTS_TIMEOUT:30}"
+    cors_origins: "${INSIGHTS_CORS:*}"
+    
+    development:
+      debug: true
+      port: 8007
+      
+    staging:
+      debug: false
+      port: 8007
+      
+    production:
+      debug: false
+      port: "${PORT:8007}"
+
+# Cross-service communication
+service_discovery:
+  # Service-to-service authentication
+  auth_enabled: "${SERVICE_AUTH_ENABLED:false}"
+  auth_token: "${SERVICE_AUTH_TOKEN:}"
+  
+  # Health check configuration
+  health_check:
+    enabled: "${HEALTH_CHECK_ENABLED:true}"
+    interval_seconds: "${HEALTH_CHECK_INTERVAL:30}"
+    timeout_seconds: "${HEALTH_CHECK_TIMEOUT:5}"
+    retry_attempts: "${HEALTH_CHECK_RETRIES:3}"
+  
+  # Load balancing
+  load_balancing:
+    enabled: "${LOAD_BALANCING_ENABLED:false}"
+    strategy: "${LOAD_BALANCING_STRATEGY:round_robin}"
+    
+  # Circuit breaker
+  circuit_breaker:
+    enabled: "${CIRCUIT_BREAKER_ENABLED:true}"
+    failure_threshold: "${CIRCUIT_BREAKER_FAILURES:5}"
+    timeout_seconds: "${CIRCUIT_BREAKER_TIMEOUT:60}"
+
+# API Gateway configuration
+api_gateway:
+  enabled: "${API_GATEWAY_ENABLED:false}"
+  port: "${API_GATEWAY_PORT:8000}"
+  
+  # Rate limiting
+  rate_limiting:
+    enabled: "${RATE_LIMITING_ENABLED:true}"
+    requests_per_minute: "${RATE_LIMIT_RPM:1000}"
+    requests_per_hour: "${RATE_LIMIT_RPH:10000}"
+  
+  # Request routing
+  routing:
+    agent_wizard: "/api/agent-wizard"
+    analytics: "/api/analytics" 
+    billing: "/api/billing"
+    dashboard: "/api/dashboard"
+    widget: "/api/widget"
+    my_agents: "/api/my-agents"
+    insights: "/api/insights"
+
+# Configuration metadata
+version: "1.0.0"
+last_updated: "2025-07-29"
+schema_version: "services-v1"

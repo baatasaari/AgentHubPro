@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """
 Dashboard Service - Data Aggregation & Real-time Metrics
-Efficient service for cross-service data aggregation and dashboard endpoints
+Efficient service for cross-service data aggregation with configurable service discovery
 """
+
+import sys
+import os
+from pathlib import Path
+
+# Add shared directory to path
+sys.path.append(str(Path(__file__).parent.parent / "shared"))
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,19 +19,41 @@ from datetime import datetime, timedelta
 from enum import Enum
 import asyncio
 import aiohttp
-import os
+import logging
 
-app = FastAPI(title="Dashboard Service", version="1.0.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# Import configuration manager
+from config_manager import get_config
 
-# Service URLs
-SERVICES = {
-    "my_agents": os.environ.get('MY_AGENTS_URL', 'http://localhost:8006'),
-    "analytics": os.environ.get('ANALYTICS_URL', 'http://localhost:8002'),
-    "billing": os.environ.get('BILLING_URL', 'http://localhost:8003'),
-    "insights": os.environ.get('INSIGHTS_URL', 'http://localhost:8007'),
-    "widget": os.environ.get('WIDGET_URL', 'http://localhost:8005')
-}
+# Initialize configuration
+config = get_config("dashboard", str(Path(__file__).parent.parent / "shared" / "config"))
+service_config = config.get_service_config()
+
+# Setup logging
+logging.basicConfig(
+    level=getattr(logging, config.get_app_setting("monitoring.log_level", "INFO")),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="Dashboard Service",
+    version="1.0.0",
+    debug=service_config.debug
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=service_config.cors_origins,
+    allow_credentials=config.get_app_setting("api.cors.allow_credentials", True),
+    allow_methods=config.get_app_setting("api.cors.allow_methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS").split(","),
+    allow_headers=config.get_app_setting("api.cors.allow_headers", "*").split(",")
+)
+
+# Get service URLs from configuration
+SERVICES = config.get_service_urls()
+logger.info(f"Configured service URLs: {SERVICES}")
 
 # Models
 class DashboardSummary(BaseModel):
@@ -231,7 +260,37 @@ def generate_alerts(summary: DashboardSummary, performance_data: List[AgentPerfo
 # Endpoints
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "dashboard", "services_configured": len(SERVICES)}
+    return {
+        "status": "healthy",
+        "service": "dashboard",
+        "services_configured": len(SERVICES),
+        "environment": config.get_environment(),
+        "storage_type": config.get_storage_config().type,
+        "alerts_count": len(alerts_db)
+    }
+
+# Configuration endpoints
+@app.get("/api/config/status")
+async def get_config_status():
+    """Get current configuration status"""
+    return config.get_status()
+
+@app.get("/api/config/reload")
+async def reload_configuration():
+    """Reload all configurations"""
+    try:
+        config.reload_all()
+        global SERVICES
+        SERVICES = config.get_service_urls()
+        return {"message": "Configuration reloaded successfully", "status": "success"}
+    except Exception as e:
+        logger.error(f"Error reloading configuration: {e}")
+        raise HTTPException(status_code=500, detail="Failed to reload configuration")
+
+@app.get("/api/config/services")
+async def get_service_urls():
+    """Get configured service URLs"""
+    return SERVICES
 
 @app.get("/api/dashboard/summary", response_model=DashboardSummary)
 async def get_dashboard_summary():

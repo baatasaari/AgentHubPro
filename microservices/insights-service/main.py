@@ -1,45 +1,76 @@
 #!/usr/bin/env python3
 """
 Insights Service - Customer Analytics & BigQuery Integration
-Efficient service for tracking customer interactions and generating analytics
+Efficient service for tracking customer interactions with configurable analytics and storage
 """
 
+import sys
 import os
+from pathlib import Path
+
+# Add shared directory to path
+sys.path.append(str(Path(__file__).parent.parent / "shared"))
+
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 from enum import Enum
 import uuid
+import logging
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import logging
 
-# BigQuery imports (graceful fallback if not available)
-try:
-    from google.cloud import bigquery
-    from google.oauth2 import service_account
-    HAS_BIGQUERY = True
-except ImportError:
-    HAS_BIGQUERY = False
+# Import configuration manager
+from config_manager import get_config
 
-app = FastAPI(title="Insights Service", version="1.0.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# Initialize configuration
+config = get_config("insights", str(Path(__file__).parent.parent / "shared" / "config"))
+service_config = config.get_service_config()
+database_config = config.get_database_config()
 
-logging.basicConfig(level=logging.INFO)
+# Setup logging
+logging.basicConfig(
+    level=getattr(logging, config.get_app_setting("monitoring.log_level", "INFO")),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
-# BigQuery setup
-PROJECT_ID = os.environ.get('GOOGLE_CLOUD_PROJECT_ID', 'agenthub-demo')
-DATASET_ID = os.environ.get('BIGQUERY_DATASET_ID', 'insights')
+# BigQuery imports (graceful fallback if not available)
+HAS_BIGQUERY = False
 bq_client = None
 
-if HAS_BIGQUERY and PROJECT_ID != 'agenthub-demo':
+if database_config.use_bigquery:
     try:
-        bq_client = bigquery.Client(project=PROJECT_ID)
-        logger.info("BigQuery client initialized")
+        from google.cloud import bigquery
+        from google.oauth2 import service_account
+        HAS_BIGQUERY = True
+        
+        if database_config.project_id:
+            bq_client = bigquery.Client(project=database_config.project_id)
+            logger.info(f"BigQuery client initialized for project: {database_config.project_id}")
+        else:
+            logger.warning("BigQuery project ID not configured")
+    except ImportError:
+        logger.warning("BigQuery client not available")
     except Exception as e:
         logger.warning(f"BigQuery unavailable: {e}")
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="Insights Service",
+    version="1.0.0",
+    debug=service_config.debug
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=service_config.cors_origins,
+    allow_credentials=config.get_app_setting("api.cors.allow_credentials", True),
+    allow_methods=config.get_app_setting("api.cors.allow_methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS").split(","),
+    allow_headers=config.get_app_setting("api.cors.allow_headers", "*").split(",")
+)
 
 # Models
 class Platform(str, Enum):
@@ -219,7 +250,36 @@ async def health_check():
         "status": "healthy",
         "service": "insights",
         "database": "bigquery" if bq_client else "memory",
-        "bigquery_project": PROJECT_ID if bq_client else None
+        "bigquery_project": database_config.project_id if bq_client else None,
+        "environment": config.get_environment(),
+        "storage_type": config.get_storage_config().type,
+        "interactions_count": len(interactions_db)
+    }
+
+# Configuration endpoints
+@app.get("/api/config/status")
+async def get_config_status():
+    """Get current configuration status"""
+    return config.get_status()
+
+@app.get("/api/config/reload")
+async def reload_configuration():
+    """Reload all configurations"""
+    try:
+        config.reload_all()
+        return {"message": "Configuration reloaded successfully", "status": "success"}
+    except Exception as e:
+        logger.error(f"Error reloading configuration: {e}")
+        raise HTTPException(status_code=500, detail="Failed to reload configuration")
+
+@app.get("/api/config/database")
+async def get_database_config():
+    """Get database configuration status"""
+    return {
+        "use_bigquery": database_config.use_bigquery,
+        "project_id": database_config.project_id,
+        "dataset_id": database_config.dataset_id,
+        "client_available": bq_client is not None
     }
 
 @app.post("/api/insights/interactions")

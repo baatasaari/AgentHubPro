@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """
 Analytics Service - Performance Metrics & Reporting
-Efficient service for tracking agent performance and generating reports
+Efficient service for tracking agent performance and generating reports with configurable settings
 """
+
+import sys
+import os
+from pathlib import Path
+
+# Add shared directory to path
+sys.path.append(str(Path(__file__).parent.parent / "shared"))
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,9 +18,37 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from enum import Enum
 import uuid
+import logging
 
-app = FastAPI(title="Analytics Service", version="1.0.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# Import configuration manager
+from config_manager import get_config
+
+# Initialize configuration
+config = get_config("analytics", str(Path(__file__).parent.parent / "shared" / "config"))
+service_config = config.get_service_config()
+
+# Setup logging
+logging.basicConfig(
+    level=getattr(logging, config.get_app_setting("monitoring.log_level", "INFO")),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="Analytics Service",
+    version="1.0.0",
+    debug=service_config.debug
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=service_config.cors_origins,
+    allow_credentials=config.get_app_setting("api.cors.allow_credentials", True),
+    allow_methods=config.get_app_setting("api.cors.allow_methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS").split(","),
+    allow_headers=config.get_app_setting("api.cors.allow_headers", "*").split(",")
+)
 
 # Models
 class MetricType(str, Enum):
@@ -41,35 +76,39 @@ class PerformanceReport(BaseModel):
 metrics_db: Dict[str, AnalyticsMetric] = {}
 reports_cache: Dict[str, PerformanceReport] = {}
 
-# Sample data
+# Sample data (only if enabled)
 def init_sample_metrics():
-    sample_agents = ["1", "2", "3"]
-    base_time = datetime.now() - timedelta(days=30)
-    
-    for agent_id in sample_agents:
-        for day in range(30):
-            timestamp = base_time + timedelta(days=day)
-            
-            # Generate metrics for each day
-            metrics = [
-                (MetricType.CONVERSATIONS, float(15 + (day % 10)), {}),
-                (MetricType.REVENUE, float(250 + (day * 10)), {"currency": "USD"}),
-                (MetricType.SATISFACTION, 4.0 + (day % 10) * 0.1, {"scale": "1-5"}),
-                (MetricType.RESPONSE_TIME, 2.5 + (day % 5) * 0.2, {"unit": "seconds"})
-            ]
-            
-            for metric_type, value, metadata in metrics:
-                metric_id = f"{agent_id}-{metric_type}-{day}"
-                metric = AnalyticsMetric(
-                    id=metric_id,
-                    agent_id=agent_id,
-                    metric_type=metric_type,
-                    value=value,
-                    timestamp=timestamp,
-                    metadata=metadata
-                )
-                metrics_db[metric_id] = metric
+    if config.is_feature_enabled("enable_mock_data"):
+        sample_agents = ["1", "2", "3"]
+        base_time = datetime.now() - timedelta(days=30)
+        
+        for agent_id in sample_agents:
+            for day in range(30):
+                timestamp = base_time + timedelta(days=day)
+                
+                # Generate metrics for each day
+                metrics = [
+                    (MetricType.CONVERSATIONS, float(15 + (day % 10)), {}),
+                    (MetricType.REVENUE, float(250 + (day * 10)), {"currency": "USD"}),
+                    (MetricType.SATISFACTION, 4.0 + (day % 10) * 0.1, {"scale": "1-5"}),
+                    (MetricType.RESPONSE_TIME, 2.5 + (day % 5) * 0.2, {"unit": "seconds"})
+                ]
+                
+                for metric_type, value, metadata in metrics:
+                    metric_id = f"{agent_id}-{metric_type}-{day}"
+                    metric = AnalyticsMetric(
+                        id=metric_id,
+                        agent_id=agent_id,
+                        metric_type=metric_type,
+                        value=value,
+                        timestamp=timestamp,
+                        metadata=metadata
+                    )
+                    metrics_db[metric_id] = metric
+        
+        logger.info(f"Initialized sample metrics for {len(sample_agents)} agents")
 
+# Initialize sample data if enabled
 init_sample_metrics()
 
 # Helper functions
@@ -100,7 +139,29 @@ def get_agent_metrics(agent_id: str, metric_type: MetricType, days: int = 30) ->
 # Endpoints
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "analytics", "metrics_count": len(metrics_db)}
+    return {
+        "status": "healthy",
+        "service": "analytics",
+        "metrics_count": len(metrics_db),
+        "environment": config.get_environment(),
+        "storage_type": config.get_storage_config().type
+    }
+
+# Configuration endpoints
+@app.get("/api/config/status")
+async def get_config_status():
+    """Get current configuration status"""
+    return config.get_status()
+
+@app.get("/api/config/reload")
+async def reload_configuration():
+    """Reload all configurations"""
+    try:
+        config.reload_all()
+        return {"message": "Configuration reloaded successfully", "status": "success"}
+    except Exception as e:
+        logger.error(f"Error reloading configuration: {e}")
+        raise HTTPException(status_code=500, detail="Failed to reload configuration")
 
 @app.post("/api/analytics/metrics")
 async def track_metric(metric: AnalyticsMetric):
