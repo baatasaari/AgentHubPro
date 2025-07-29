@@ -13,6 +13,7 @@ AgentHub is a comprehensive SaaS platform that enables businesses to create, cus
 - **📈 Dashboard Service (8004)**: Data aggregation, real-time metrics, and cross-service orchestration
 - **🎨 Widget Service (8005)**: Widget customization, code generation, and template management
 - **🔧 My Agents Service (8006)**: Comprehensive agent lifecycle management (CRUD, enable/disable, status tracking)
+- **📈 Insights Service (8007)**: Customer interaction analytics across platforms (WhatsApp, Instagram, Web) with conversion tracking, lead qualification, and ROI reporting
 - **🌐 API Gateway (8000)**: Request routing, load balancing, and service discovery
 
 ### Frontend Architecture
@@ -191,6 +192,22 @@ Preferred communication style: Simple, everyday language for non-technical users
 - **Container Registry**: Ready for deployment to AWS ECR, Docker Hub, or Google Container Registry
 
 ## Recent Changes
+
+### July 29, 2025 - Insights Microservice & Customer Analytics Platform
+- ✓ Built comprehensive Insights Service (port 8007) for customer interaction analytics
+- ✓ Implemented multi-platform tracking (WhatsApp, Instagram, Web chat, Facebook, SMS)
+- ✓ Created conversion rate analysis with revenue attribution tracking
+- ✓ Developed lead capture and qualification scoring system
+- ✓ Added near-miss opportunity identification and recovery suggestions
+- ✓ Built customer journey analytics across multiple touchpoints
+- ✓ Implemented PostgreSQL database with optimized schema for analytics
+- ✓ Created comprehensive reporting system with actionable insights
+- ✓ Added real-time dashboard for customer interaction metrics
+- ✓ Built ROI and effectiveness measurement capabilities
+- ✓ Implemented cross-platform performance comparison tools
+- ✓ Created sample data generation for realistic testing scenarios
+- ✓ Added automated testing suite for analytics functionality
+- ✓ Integrated with existing microservices ecosystem for cross-service analytics
 
 ### July 28, 2025 - Complete Microservices Architecture Implementation & Comprehensive Testing
 - ✓ Created independent Agent Wizard microservice using FastAPI
