@@ -69,9 +69,11 @@ services:
     ports:
       - "8004:8004"
     environment:
-      - AGENT_SERVICE_URL=http://agent-wizard:8001
-      - ANALYTICS_SERVICE_URL=http://analytics-service:8002
-      - BILLING_SERVICE_URL=http://billing-service:8003
+      - MY_AGENTS_URL=http://my-agents-service:8006
+      - ANALYTICS_URL=http://analytics-service:8002
+      - BILLING_URL=http://billing-service:8003
+      - INSIGHTS_URL=http://insights-service:8007
+      - WIDGET_URL=http://widget-service:8005
       - ENVIRONMENT=development
     depends_on:
       - agent-wizard
@@ -130,6 +132,28 @@ services:
     networks:
       - agenthub-network
 
+  # Insights Service  
+  insights-service:
+    build:
+      context: ./insights-service
+      dockerfile: Dockerfile
+    ports:
+      - "8007:8007"
+    environment:
+      - GOOGLE_CLOUD_PROJECT_ID=agenthub-demo
+      - BIGQUERY_DATASET_ID=insights
+      - ENVIRONMENT=development
+    depends_on:
+      - agent-wizard
+      - my-agents-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - agenthub-network
+
   # API Gateway (optional - using nginx for routing)
   api-gateway:
     image: nginx:alpine
@@ -144,6 +168,7 @@ services:
       - dashboard-service
       - widget-service
       - my-agents-service
+      - insights-service
     networks:
       - agenthub-network
 

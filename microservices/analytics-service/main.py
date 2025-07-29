@@ -1,223 +1,238 @@
 #!/usr/bin/env python3
 """
-Analytics Service - Conversation Tracking and Performance Metrics
-Port: 8002
+Analytics Service - Performance Metrics & Reporting
+Efficient service for tracking agent performance and generating reports
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-import uuid
 from datetime import datetime, timedelta
-import uvicorn
+from enum import Enum
+import uuid
 
-app = FastAPI(
-    title="Analytics Service",
-    description="Conversation Tracking and Performance Metrics",
-    version="1.0.0"
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# In-memory storage
-conversations_db = {}
-metrics_db = {}
-
-# Sample data
-sample_conversations = [
-    {
-        "id": "conv-1",
-        "agent_id": "agent-1",
-        "conversation_id": "healthcare-conv-123",
-        "message_count": 8,
-        "tokens_used": 245,
-        "cost": 0.00245,
-        "response_time": 1.2,
-        "user_satisfaction": 4.8,
-        "conversation_type": "patient_inquiry",
-        "started_at": "2025-01-20T09:15:00Z",
-        "ended_at": "2025-01-20T09:25:00Z"
-    },
-    {
-        "id": "conv-2",
-        "agent_id": "agent-2",
-        "conversation_id": "retail-conv-456",
-        "message_count": 5,
-        "tokens_used": 180,
-        "cost": 0.00036,
-        "response_time": 0.8,
-        "user_satisfaction": 4.2,
-        "conversation_type": "customer_support",
-        "started_at": "2025-01-20T14:30:00Z",
-        "ended_at": "2025-01-20T14:35:00Z"
-    }
-]
-
-for conv in sample_conversations:
-    conversations_db[conv["id"]] = conv
+app = FastAPI(title="Analytics Service", version="1.0.0")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 # Models
-class ConversationData(BaseModel):
-    agent_id: str
-    conversation_id: str
-    message_count: int = Field(..., ge=1)
-    tokens_used: int = Field(..., ge=0)
-    cost: float = Field(..., ge=0)
-    response_time: Optional[float] = None
-    user_satisfaction: Optional[float] = Field(None, ge=1, le=5)
-    conversation_type: Optional[str] = None
+class MetricType(str, Enum):
+    CONVERSATIONS = "conversations"
+    REVENUE = "revenue"
+    SATISFACTION = "satisfaction"
+    RESPONSE_TIME = "response_time"
 
+class AnalyticsMetric(BaseModel):
+    id: str
+    agent_id: str
+    metric_type: MetricType
+    value: float
+    timestamp: datetime
+    metadata: Dict[str, Any] = {}
+
+class PerformanceReport(BaseModel):
+    agent_id: str
+    period_start: datetime
+    period_end: datetime
+    metrics: Dict[str, Any]
+    trends: Dict[str, float]
+
+# Storage
+metrics_db: Dict[str, AnalyticsMetric] = {}
+reports_cache: Dict[str, PerformanceReport] = {}
+
+# Sample data
+def init_sample_metrics():
+    sample_agents = ["1", "2", "3"]
+    base_time = datetime.now() - timedelta(days=30)
+    
+    for agent_id in sample_agents:
+        for day in range(30):
+            timestamp = base_time + timedelta(days=day)
+            
+            # Generate metrics for each day
+            metrics = [
+                (MetricType.CONVERSATIONS, float(15 + (day % 10)), {}),
+                (MetricType.REVENUE, float(250 + (day * 10)), {"currency": "USD"}),
+                (MetricType.SATISFACTION, 4.0 + (day % 10) * 0.1, {"scale": "1-5"}),
+                (MetricType.RESPONSE_TIME, 2.5 + (day % 5) * 0.2, {"unit": "seconds"})
+            ]
+            
+            for metric_type, value, metadata in metrics:
+                metric_id = f"{agent_id}-{metric_type}-{day}"
+                metric = AnalyticsMetric(
+                    id=metric_id,
+                    agent_id=agent_id,
+                    metric_type=metric_type,
+                    value=value,
+                    timestamp=timestamp,
+                    metadata=metadata
+                )
+                metrics_db[metric_id] = metric
+
+init_sample_metrics()
+
+# Helper functions
+def calculate_trend(values: List[float]) -> float:
+    """Calculate trend percentage (positive = improving)"""
+    if len(values) < 2:
+        return 0.0
+    
+    first_half = sum(values[:len(values)//2]) / (len(values)//2)
+    second_half = sum(values[len(values)//2:]) / (len(values) - len(values)//2)
+    
+    if first_half == 0:
+        return 0.0
+    
+    return round(((second_half - first_half) / first_half) * 100, 2)
+
+def get_agent_metrics(agent_id: str, metric_type: MetricType, days: int = 30) -> List[AnalyticsMetric]:
+    """Get metrics for an agent within time period"""
+    cutoff_date = datetime.now() - timedelta(days=days)
+    
+    return [
+        metric for metric in metrics_db.values()
+        if metric.agent_id == agent_id 
+        and metric.metric_type == metric_type
+        and metric.timestamp >= cutoff_date
+    ]
+
+# Endpoints
 @app.get("/health")
 async def health_check():
-    return {
-        "service": "analytics-service",
-        "status": "healthy",
-        "version": "1.0.0",
-        "timestamp": datetime.utcnow().isoformat(),
-        "conversations_tracked": len(conversations_db)
-    }
+    return {"status": "healthy", "service": "analytics", "metrics_count": len(metrics_db)}
 
-@app.post("/api/analytics/conversations", status_code=201)
-async def track_conversation(conversation_data: ConversationData):
-    conversation_id = f"conv-{uuid.uuid4().hex[:8]}"
+@app.post("/api/analytics/metrics")
+async def track_metric(metric: AnalyticsMetric):
+    """Track a new metric"""
+    metric.id = metric.id or str(uuid.uuid4())
+    metrics_db[metric.id] = metric
     
-    conversation = {
-        "id": conversation_id,
-        "agent_id": conversation_data.agent_id,
-        "conversation_id": conversation_data.conversation_id,
-        "message_count": conversation_data.message_count,
-        "tokens_used": conversation_data.tokens_used,
-        "cost": conversation_data.cost,
-        "response_time": conversation_data.response_time,
-        "user_satisfaction": conversation_data.user_satisfaction,
-        "conversation_type": conversation_data.conversation_type,
-        "tracked_at": datetime.utcnow().isoformat()
-    }
+    # Invalidate cache for this agent
+    cache_key = f"report-{metric.agent_id}"
+    if cache_key in reports_cache:
+        del reports_cache[cache_key]
     
-    conversations_db[conversation_id] = conversation
-    return conversation
+    return {"id": metric.id, "status": "tracked"}
 
-@app.get("/api/analytics/conversations")
-async def get_conversations(agent_id: Optional[str] = None, limit: int = 50):
-    conversations = list(conversations_db.values())
+@app.get("/api/analytics/metrics/{agent_id}")
+async def get_metrics(
+    agent_id: str,
+    metric_type: Optional[MetricType] = None,
+    days: int = Query(30, le=365)
+):
+    """Get metrics for an agent"""
+    cutoff_date = datetime.now() - timedelta(days=days)
     
-    if agent_id:
-        conversations = [c for c in conversations if c["agent_id"] == agent_id]
-    
-    return conversations[:limit]
-
-@app.get("/api/analytics/agents/{agent_id}/performance")
-async def get_agent_performance(agent_id: str):
-    agent_conversations = [c for c in conversations_db.values() if c["agent_id"] == agent_id]
-    
-    if not agent_conversations:
-        return {
-            "agent_id": agent_id,
-            "conversation_count": 0,
-            "total_tokens": 0,
-            "total_cost": 0,
-            "avg_response_time": 0,
-            "avg_satisfaction": 0,
-            "performance_trend": "no_data"
-        }
-    
-    total_conversations = len(agent_conversations)
-    total_tokens = sum(c["tokens_used"] for c in agent_conversations)
-    total_cost = sum(c["cost"] for c in agent_conversations)
-    
-    response_times = [c["response_time"] for c in agent_conversations if c["response_time"]]
-    avg_response_time = sum(response_times) / len(response_times) if response_times else 0
-    
-    satisfactions = [c["user_satisfaction"] for c in agent_conversations if c["user_satisfaction"]]
-    avg_satisfaction = sum(satisfactions) / len(satisfactions) if satisfactions else 0
-    
-    return {
-        "agent_id": agent_id,
-        "conversation_count": total_conversations,
-        "total_tokens": total_tokens,
-        "total_cost": total_cost,
-        "avg_response_time": avg_response_time,
-        "avg_satisfaction": avg_satisfaction,
-        "performance_trend": "improving" if avg_satisfaction > 4.0 else "stable"
-    }
-
-@app.get("/api/analytics/usage")
-async def get_usage_metrics():
-    all_conversations = list(conversations_db.values())
-    
-    total_conversations = len(all_conversations)
-    total_tokens = sum(c["tokens_used"] for c in all_conversations)
-    total_cost = sum(c["cost"] for c in all_conversations)
-    
-    # Agent breakdown
-    agent_stats = {}
-    for conv in all_conversations:
-        agent_id = conv["agent_id"]
-        if agent_id not in agent_stats:
-            agent_stats[agent_id] = {"conversations": 0, "tokens": 0, "cost": 0}
-        
-        agent_stats[agent_id]["conversations"] += 1
-        agent_stats[agent_id]["tokens"] += conv["tokens_used"]
-        agent_stats[agent_id]["cost"] += conv["cost"]
-    
-    return {
-        "total_conversations": total_conversations,
-        "total_tokens": total_tokens,
-        "total_cost": total_cost,
-        "agent_breakdown": agent_stats,
-        "generated_at": datetime.utcnow().isoformat()
-    }
-
-@app.get("/api/analytics/dashboard")
-async def get_analytics_dashboard():
-    all_conversations = list(conversations_db.values())
-    
-    # Recent activity (last 24 hours)
-    now = datetime.utcnow()
-    day_ago = now - timedelta(days=1)
-    
-    recent_conversations = [
-        c for c in all_conversations 
-        if "tracked_at" in c and datetime.fromisoformat(c["tracked_at"].replace('Z', '+00:00')) > day_ago
+    agent_metrics = [
+        metric for metric in metrics_db.values()
+        if metric.agent_id == agent_id and metric.timestamp >= cutoff_date
     ]
     
-    # Top performing agents
-    agent_performance = {}
-    for conv in all_conversations:
-        agent_id = conv["agent_id"]
-        if agent_id not in agent_performance:
-            agent_performance[agent_id] = []
-        
-        if conv.get("user_satisfaction"):
-            agent_performance[agent_id].append(conv["user_satisfaction"])
+    if metric_type:
+        agent_metrics = [m for m in agent_metrics if m.metric_type == metric_type]
     
-    top_agents = []
-    for agent_id, satisfactions in agent_performance.items():
-        if satisfactions:
-            avg_satisfaction = sum(satisfactions) / len(satisfactions)
-            top_agents.append({
-                "agent_id": agent_id,
-                "avg_satisfaction": avg_satisfaction,
-                "conversation_count": len(satisfactions)
-            })
+    return sorted(agent_metrics, key=lambda x: x.timestamp, reverse=True)
+
+@app.get("/api/analytics/reports/{agent_id}")
+async def get_performance_report(agent_id: str, days: int = Query(30, le=365)):
+    """Generate performance report for an agent"""
+    cache_key = f"report-{agent_id}-{days}"
     
-    top_agents.sort(key=lambda x: x["avg_satisfaction"], reverse=True)
+    # Check cache first
+    if cache_key in reports_cache:
+        cached_report = reports_cache[cache_key]
+        if (datetime.now() - cached_report.period_end).total_seconds() < 3600:  # 1 hour cache
+            return cached_report
+    
+    period_end = datetime.now()
+    period_start = period_end - timedelta(days=days)
+    
+    # Calculate metrics
+    conversations = get_agent_metrics(agent_id, MetricType.CONVERSATIONS, days)
+    revenue = get_agent_metrics(agent_id, MetricType.REVENUE, days)
+    satisfaction = get_agent_metrics(agent_id, MetricType.SATISFACTION, days)
+    response_times = get_agent_metrics(agent_id, MetricType.RESPONSE_TIME, days)
+    
+    metrics = {
+        "total_conversations": sum(m.value for m in conversations),
+        "total_revenue": sum(m.value for m in revenue),
+        "avg_satisfaction": round(sum(m.value for m in satisfaction) / len(satisfaction) if satisfaction else 0, 2),
+        "avg_response_time": round(sum(m.value for m in response_times) / len(response_times) if response_times else 0, 2),
+        "data_points": len(conversations) + len(revenue) + len(satisfaction) + len(response_times)
+    }
+    
+    # Calculate trends
+    trends = {
+        "conversations_trend": calculate_trend([m.value for m in conversations]),
+        "revenue_trend": calculate_trend([m.value for m in revenue]),
+        "satisfaction_trend": calculate_trend([m.value for m in satisfaction]),
+        "response_time_trend": calculate_trend([-m.value for m in response_times])  # Negative for improvement
+    }
+    
+    report = PerformanceReport(
+        agent_id=agent_id,
+        period_start=period_start,
+        period_end=period_end,
+        metrics=metrics,
+        trends=trends
+    )
+    
+    # Cache the report
+    reports_cache[cache_key] = report
+    
+    return report
+
+@app.get("/api/analytics/summary")
+async def get_analytics_summary():
+    """Get overall analytics summary"""
+    total_metrics = len(metrics_db)
+    unique_agents = len(set(m.agent_id for m in metrics_db.values()))
+    
+    recent_metrics = [
+        m for m in metrics_db.values()
+        if (datetime.now() - m.timestamp).total_seconds() < 24 * 3600  # Last 24 hours
+    ]
+    
+    # Calculate platform-wide averages
+    satisfaction_metrics = [m for m in recent_metrics if m.metric_type == MetricType.SATISFACTION]
+    revenue_metrics = [m for m in recent_metrics if m.metric_type == MetricType.REVENUE]
     
     return {
-        "total_conversations": len(all_conversations),
-        "recent_conversations": len(recent_conversations),
-        "top_performing_agents": top_agents[:5],
-        "average_satisfaction": sum(c.get("user_satisfaction", 0) for c in all_conversations if c.get("user_satisfaction")) / len([c for c in all_conversations if c.get("user_satisfaction")]) if all_conversations else 0,
-        "last_updated": datetime.utcnow().isoformat()
+        "total_metrics": total_metrics,
+        "unique_agents": unique_agents,
+        "recent_activity": len(recent_metrics),
+        "platform_averages": {
+            "satisfaction": round(sum(m.value for m in satisfaction_metrics) / len(satisfaction_metrics) if satisfaction_metrics else 0, 2),
+            "daily_revenue": round(sum(m.value for m in revenue_metrics), 2)
+        },
+        "last_updated": max(m.timestamp for m in metrics_db.values()) if metrics_db else None
+    }
+
+@app.get("/api/analytics/compare")
+async def compare_agents(agent_ids: List[str] = Query(...), days: int = Query(30, le=365)):
+    """Compare performance between multiple agents"""
+    comparison = {}
+    
+    for agent_id in agent_ids:
+        conversations = get_agent_metrics(agent_id, MetricType.CONVERSATIONS, days)
+        revenue = get_agent_metrics(agent_id, MetricType.REVENUE, days)
+        satisfaction = get_agent_metrics(agent_id, MetricType.SATISFACTION, days)
+        
+        comparison[agent_id] = {
+            "total_conversations": sum(m.value for m in conversations),
+            "total_revenue": sum(m.value for m in revenue),
+            "avg_satisfaction": round(sum(m.value for m in satisfaction) / len(satisfaction) if satisfaction else 0, 2),
+            "metrics_count": len(conversations) + len(revenue) + len(satisfaction)
+        }
+    
+    return {
+        "comparison": comparison,
+        "period_days": days,
+        "compared_at": datetime.now()
     }
 
 if __name__ == "__main__":
+    import uvicorn
     print("Starting Analytics Service on http://0.0.0.0:8002")
-    uvicorn.run(app, host="0.0.0.0", port=8002)
+    uvicorn.run(app, host="0.0.0.0", port=8002, log_level="info")
