@@ -1,0 +1,381 @@
+---
+# LLM Models Configuration for AgentHub Platform
+# Comprehensive configuration for all supported AI models and providers
+
+llm_providers:
+  # Google Cloud / Vertex AI Models
+  google:
+    enabled: true
+    project_id: "${GOOGLE_CLOUD_PROJECT_ID}"
+    location: "${VERTEX_AI_LOCATION:us-central1}"
+    
+    # Authentication
+    authentication:
+      service_account_key: "${GOOGLE_APPLICATION_CREDENTIALS}"
+      service_account_json: "${GOOGLE_SERVICE_ACCOUNT_KEY}"
+    
+    # API Configuration
+    api_config:
+      vertex_ai_endpoint: "https://${VERTEX_AI_LOCATION:us-central1}-aiplatform.googleapis.com"
+      timeout: "${VERTEX_AI_TIMEOUT:60}"
+      max_retries: "${VERTEX_AI_MAX_RETRIES:3}"
+      retry_delay: "${VERTEX_AI_RETRY_DELAY:2}"
+    
+    # Supported Models
+    models:
+      gemini-1.5-pro:
+        model_id: "gemini-1.5-pro"
+        display_name: "Gemini 1.5 Pro"
+        description: "Most capable model for complex reasoning and long context"
+        max_tokens: 2097152
+        max_output_tokens: 8192
+        temperature_range: [0.0, 2.0]
+        top_p_range: [0.0, 1.0]
+        top_k_range: [1, 40]
+        pricing:
+          input_tokens: 0.000125  # per 1K tokens
+          output_tokens: 0.000375 # per 1K tokens
+          context_caching: 0.00003125 # per 1K tokens
+        features:
+          - text_generation
+          - code_generation
+          - function_calling
+          - vision
+          - multimodal
+          - long_context
+        safety_settings:
+          harassment: "BLOCK_MEDIUM_AND_ABOVE"
+          hate_speech: "BLOCK_MEDIUM_AND_ABOVE"
+          sexually_explicit: "BLOCK_MEDIUM_AND_ABOVE"
+          dangerous_content: "BLOCK_MEDIUM_AND_ABOVE"
+      
+      gemini-1.5-flash:
+        model_id: "gemini-1.5-flash"
+        display_name: "Gemini 1.5 Flash"
+        description: "Fast and efficient model for high-frequency tasks"
+        max_tokens: 1048576
+        max_output_tokens: 8192
+        temperature_range: [0.0, 2.0]
+        pricing:
+          input_tokens: 0.000075  # per 1K tokens
+          output_tokens: 0.0003   # per 1K tokens
+        features:
+          - text_generation
+          - code_generation
+          - function_calling
+          - vision
+          - fast_inference
+      
+      gemini-pro:
+        model_id: "gemini-pro"
+        display_name: "Gemini Pro"
+        description: "Balanced performance for most use cases"
+        max_tokens: 32768
+        max_output_tokens: 2048
+        pricing:
+          input_tokens: 0.0005   # per 1K tokens
+          output_tokens: 0.0015  # per 1K tokens
+        features:
+          - text_generation
+          - code_generation
+          - function_calling
+      
+      text-embedding-004:
+        model_id: "text-embedding-004"
+        display_name: "Text Embedding 004"
+        description: "Latest text embedding model"
+        max_tokens: 3072
+        embedding_dimensions: 768
+        pricing:
+          input_tokens: 0.00002  # per 1K tokens
+        features:
+          - text_embedding
+          - semantic_search
+          - similarity
+      
+      textembedding-gecko:
+        model_id: "textembedding-gecko"
+        display_name: "Text Embedding Gecko"
+        description: "Multilingual text embedding model"
+        max_tokens: 3072
+        embedding_dimensions: 768
+        pricing:
+          input_tokens: 0.000025 # per 1K tokens
+        features:
+          - text_embedding
+          - multilingual
+
+  # OpenAI Models
+  openai:
+    enabled: true
+    api_key: "${OPENAI_API_KEY}"
+    organization: "${OPENAI_ORGANIZATION_ID}"
+    
+    # API Configuration
+    api_config:
+      base_url: "https://api.openai.com/v1"
+      timeout: "${OPENAI_TIMEOUT:60}"
+      max_retries: "${OPENAI_MAX_RETRIES:3}"
+      retry_delay: "${OPENAI_RETRY_DELAY:1}"
+    
+    models:
+      gpt-4-turbo:
+        model_id: "gpt-4-turbo"
+        display_name: "GPT-4 Turbo"
+        description: "Most capable GPT-4 model with enhanced performance"
+        max_tokens: 128000
+        max_output_tokens: 4096
+        temperature_range: [0.0, 2.0]
+        pricing:
+          input_tokens: 0.01     # per 1K tokens
+          output_tokens: 0.03    # per 1K tokens
+        features:
+          - text_generation
+          - code_generation
+          - function_calling
+          - json_mode
+          - vision
+      
+      gpt-4:
+        model_id: "gpt-4"
+        display_name: "GPT-4"
+        description: "High-intelligence flagship model for complex tasks"
+        max_tokens: 8192
+        max_output_tokens: 4096
+        pricing:
+          input_tokens: 0.03     # per 1K tokens
+          output_tokens: 0.06    # per 1K tokens
+        features:
+          - text_generation
+          - code_generation
+          - function_calling
+      
+      gpt-3.5-turbo:
+        model_id: "gpt-3.5-turbo"
+        display_name: "GPT-3.5 Turbo"
+        description: "Fast, cost-effective model for simple tasks"
+        max_tokens: 16385
+        max_output_tokens: 4096
+        temperature_range: [0.0, 2.0]
+        pricing:
+          input_tokens: 0.0005   # per 1K tokens
+          output_tokens: 0.0015  # per 1K tokens
+        features:
+          - text_generation
+          - code_generation
+          - function_calling
+          - json_mode
+      
+      text-embedding-3-large:
+        model_id: "text-embedding-3-large"
+        display_name: "Text Embedding 3 Large"
+        description: "Most capable embedding model"
+        max_tokens: 8191
+        embedding_dimensions: 3072
+        pricing:
+          input_tokens: 0.00013  # per 1K tokens
+        features:
+          - text_embedding
+          - semantic_search
+      
+      text-embedding-3-small:
+        model_id: "text-embedding-3-small"
+        display_name: "Text Embedding 3 Small"
+        description: "Efficient embedding model"
+        max_tokens: 8191
+        embedding_dimensions: 1536
+        pricing:
+          input_tokens: 0.00002  # per 1K tokens
+        features:
+          - text_embedding
+
+  # Anthropic Claude Models
+  anthropic:
+    enabled: true
+    api_key: "${ANTHROPIC_API_KEY}"
+    
+    # API Configuration
+    api_config:
+      base_url: "https://api.anthropic.com"
+      timeout: "${ANTHROPIC_TIMEOUT:60}"
+      max_retries: "${ANTHROPIC_MAX_RETRIES:3}"
+      retry_delay: "${ANTHROPIC_RETRY_DELAY:1}"
+      version: "2023-06-01"
+    
+    models:
+      claude-3.5-sonnet:
+        model_id: "claude-3-5-sonnet-20241022"
+        display_name: "Claude 3.5 Sonnet"
+        description: "Most intelligent model with enhanced capabilities"
+        max_tokens: 200000
+        max_output_tokens: 8192
+        temperature_range: [0.0, 1.0]
+        pricing:
+          input_tokens: 0.003    # per 1K tokens
+          output_tokens: 0.015   # per 1K tokens
+        features:
+          - text_generation
+          - code_generation
+          - function_calling
+          - vision
+          - artifacts
+      
+      claude-3-opus:
+        model_id: "claude-3-opus-20240229"
+        display_name: "Claude 3 Opus"
+        description: "Most powerful model for highly complex tasks"
+        max_tokens: 200000
+        max_output_tokens: 4096
+        pricing:
+          input_tokens: 0.015    # per 1K tokens
+          output_tokens: 0.075   # per 1K tokens
+        features:
+          - text_generation
+          - code_generation
+          - vision
+          - analysis
+      
+      claude-3-haiku:
+        model_id: "claude-3-haiku-20240307"
+        display_name: "Claude 3 Haiku"
+        description: "Fastest model for simple tasks and real-time applications"
+        max_tokens: 200000
+        max_output_tokens: 4096
+        pricing:
+          input_tokens: 0.00025  # per 1K tokens
+          output_tokens: 0.00125 # per 1K tokens
+        features:
+          - text_generation
+          - code_generation
+          - fast_inference
+
+  # Azure OpenAI Models
+  azure_openai:
+    enabled: false
+    api_key: "${AZURE_OPENAI_API_KEY}"
+    endpoint: "${AZURE_OPENAI_ENDPOINT}"
+    api_version: "${AZURE_OPENAI_API_VERSION:2024-02-01}"
+    
+    models:
+      gpt-4-azure:
+        deployment_name: "${AZURE_GPT4_DEPLOYMENT_NAME}"
+        model_id: "gpt-4"
+        display_name: "GPT-4 (Azure)"
+        description: "GPT-4 hosted on Azure OpenAI"
+        max_tokens: 8192
+        pricing:
+          input_tokens: 0.03
+          output_tokens: 0.06
+
+# Model Selection Policies
+model_policies:
+  # Default models for different use cases
+  defaults:
+    general_chat: "gpt-3.5-turbo"
+    complex_reasoning: "gpt-4-turbo"
+    code_generation: "claude-3.5-sonnet"
+    fast_responses: "gemini-1.5-flash"
+    embeddings: "text-embedding-3-small"
+    multilingual: "gemini-pro"
+  
+  # Industry-specific recommendations
+  industry_recommendations:
+    healthcare:
+      primary: "claude-3.5-sonnet"    # Better for detailed, careful responses
+      fallback: "gpt-4-turbo"
+    finance:
+      primary: "gpt-4-turbo"         # Strong analytical capabilities
+      fallback: "claude-3-opus"
+    technology:
+      primary: "claude-3.5-sonnet"   # Excellent for code and technical content
+      fallback: "gpt-4-turbo"
+    retail:
+      primary: "gpt-3.5-turbo"       # Cost-effective for customer service
+      fallback: "gemini-1.5-flash"
+    education:
+      primary: "gemini-pro"          # Good for explanations
+      fallback: "gpt-4-turbo"
+    legal:
+      primary: "claude-3-opus"       # Most careful and thorough
+      fallback: "gpt-4-turbo"
+  
+  # Cost optimization settings
+  cost_optimization:
+    max_daily_cost_per_agent: 5.00   # USD
+    max_monthly_cost_per_agent: 100.00
+    auto_downgrade_threshold: 0.80   # Switch to cheaper model at 80% of budget
+    cost_tracking_enabled: true
+
+# Rate Limiting Configuration
+rate_limits:
+  global:
+    requests_per_minute: 1000
+    tokens_per_minute: 150000
+    concurrent_requests: 50
+  
+  per_provider:
+    openai:
+      requests_per_minute: 500
+      tokens_per_minute: 90000
+    anthropic:
+      requests_per_minute: 300
+      tokens_per_minute: 50000
+    google:
+      requests_per_minute: 600
+      tokens_per_minute: 100000
+
+# Monitoring and Analytics
+monitoring:
+  # Performance tracking
+  track_response_times: true
+  track_token_usage: true
+  track_costs: true
+  track_errors: true
+  
+  # Quality metrics
+  enable_quality_scoring: true
+  quality_thresholds:
+    response_time_ms: 5000
+    error_rate_percent: 1.0
+    
+  # Alerting
+  alerts:
+    high_error_rate: true
+    cost_threshold_exceeded: true
+    slow_response_times: true
+
+# Security and Compliance
+security:
+  # API key rotation
+  api_key_rotation_days: 90
+  
+  # Content filtering
+  content_filtering:
+    enabled: true
+    block_harmful_content: true
+    log_filtered_requests: true
+  
+  # Data retention
+  data_retention:
+    conversation_logs_days: 30
+    metrics_retention_days: 365
+    error_logs_days: 90
+
+# Development and Testing
+development:
+  # Model testing
+  enable_model_comparison: true
+  a_b_testing_enabled: false
+  
+  # Debug settings
+  log_all_requests: "${LLM_DEBUG_LOGGING:false}"
+  log_response_details: "${LLM_DETAILED_LOGGING:false}"
+  
+  # Sandbox mode
+  sandbox_mode: "${LLM_SANDBOX_MODE:false}"
+  sandbox_models: ["gpt-3.5-turbo", "gemini-1.5-flash"]
+
+# Configuration metadata
+version: "2.0.0"
+last_updated: "2025-07-29"
+schema_version: "llm-config-v2"

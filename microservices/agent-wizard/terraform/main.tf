@@ -66,6 +66,31 @@ resource "google_project_service" "iam_api" {
   disable_on_destroy         = false
 }
 
+# Vertex AI and AI Platform APIs
+resource "google_project_service" "vertex_ai_api" {
+  project = var.project_id
+  service = "aiplatform.googleapis.com"
+  
+  disable_dependent_services = true
+  disable_on_destroy         = false
+}
+
+resource "google_project_service" "ml_api" {
+  project = var.project_id
+  service = "ml.googleapis.com"
+  
+  disable_dependent_services = true
+  disable_on_destroy         = false
+}
+
+resource "google_project_service" "generative_ai_api" {
+  project = var.project_id
+  service = "generativelanguage.googleapis.com"
+  
+  disable_dependent_services = true
+  disable_on_destroy         = false
+}
+
 # Service Account for Agent Wizard
 resource "google_service_account" "agent_wizard_sa" {
   account_id   = "${var.service_name}-${var.environment}"
@@ -290,6 +315,31 @@ resource "google_project_iam_member" "bigquery_data_editor" {
 resource "google_project_iam_member" "bigquery_job_user" {
   project = var.project_id
   role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${google_service_account.agent_wizard_sa.email}"
+}
+
+# IAM Bindings for Vertex AI and AI Services
+resource "google_project_iam_member" "vertex_ai_user" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.agent_wizard_sa.email}"
+}
+
+resource "google_project_iam_member" "vertex_ai_prediction_service" {
+  project = var.project_id
+  role    = "roles/aiplatform.predictionServiceAgent"
+  member  = "serviceAccount:${google_service_account.agent_wizard_sa.email}"
+}
+
+resource "google_project_iam_member" "ml_developer" {
+  project = var.project_id
+  role    = "roles/ml.developer"
+  member  = "serviceAccount:${google_service_account.agent_wizard_sa.email}"
+}
+
+resource "google_project_iam_member" "generative_ai_editor" {
+  project = var.project_id
+  role    = "roles/generativelanguage.editor"
   member  = "serviceAccount:${google_service_account.agent_wizard_sa.email}"
 }
 
