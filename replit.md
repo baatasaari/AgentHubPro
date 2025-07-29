@@ -193,14 +193,15 @@ Preferred communication style: Simple, everyday language for non-technical users
 
 ## Recent Changes
 
-### July 29, 2025 - Insights Microservice & Customer Analytics Platform
+### July 29, 2025 - Insights Microservice & Customer Analytics Platform (BigQuery Migration)
 - ✓ Built comprehensive Insights Service (port 8007) for customer interaction analytics
 - ✓ Implemented multi-platform tracking (WhatsApp, Instagram, Web chat, Facebook, SMS)
 - ✓ Created conversion rate analysis with revenue attribution tracking
 - ✓ Developed lead capture and qualification scoring system
 - ✓ Added near-miss opportunity identification and recovery suggestions
 - ✓ Built customer journey analytics across multiple touchpoints
-- ✓ Implemented PostgreSQL database with optimized schema for analytics
+- ✓ Migrated from PostgreSQL to Google Cloud BigQuery for scalable analytics
+- ✓ Implemented BigQuery schema with optimized tables for analytics workloads
 - ✓ Created comprehensive reporting system with actionable insights
 - ✓ Added real-time dashboard for customer interaction metrics
 - ✓ Built ROI and effectiveness measurement capabilities
@@ -208,6 +209,7 @@ Preferred communication style: Simple, everyday language for non-technical users
 - ✓ Created sample data generation for realistic testing scenarios
 - ✓ Added automated testing suite for analytics functionality
 - ✓ Integrated with existing microservices ecosystem for cross-service analytics
+- ✓ Enhanced scalability with BigQuery's enterprise-grade data warehouse capabilities
 
 ### July 28, 2025 - Complete Microservices Architecture Implementation & Comprehensive Testing
 - ✓ Created independent Agent Wizard microservice using FastAPI

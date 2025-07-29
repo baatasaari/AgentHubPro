@@ -7,6 +7,7 @@ Creates realistic customer interaction data for testing and demonstration
 import asyncio
 import httpx
 import random
+import json
 from datetime import datetime, timedelta
 from typing import List
 
@@ -81,7 +82,8 @@ def generate_customer_interactions(num_interactions: int = 50) -> List[dict]:
             "metadata": {
                 "source_campaign": random.choice(["google-ads", "facebook-ads", "instagram-story", "organic", "referral"]),
                 "device_type": random.choice(["mobile", "desktop", "tablet"]),
-                "customer_segment": random.choice(["premium", "standard", "budget"])
+                "customer_segment": random.choice(["premium", "standard", "budget"]),
+                "lead_quality": random.choice(lead_qualities) if revenue > 0 else None
             }
         }
         
