@@ -9,6 +9,8 @@ import MyAgents from "@/pages/my-agents";
 import Billing from "@/pages/billing";
 import Analytics from "@/pages/analytics";
 import RAGManagement from "@/pages/rag-management"; 
+import ConsultationBooking from "@/pages/consultation-booking";
+import PaymentDemo from "@/pages/payment-demo";
 import Navigation from "@/components/navigation";
 import NotFound from "@/pages/not-found";
 
@@ -23,6 +25,8 @@ function Router() {
         <Route path="/analytics" component={Analytics} />
         <Route path="/billing" component={Billing} />
         <Route path="/rag" component={RAGManagement} />
+        <Route path="/consultation" component={ConsultationBooking} />
+        <Route path="/payment-demo" component={PaymentDemo} />
         <Route component={NotFound} />
       </Switch>
     </div>

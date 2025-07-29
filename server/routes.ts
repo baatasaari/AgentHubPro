@@ -4,8 +4,11 @@ import { storage } from "./storage";
 import { insertAgentSchema, insertConversationSchema } from "@shared/schema";
 import { z } from "zod";
 import { ragRoutes } from "./rag";
+import { registerPaymentRoutes } from './payment-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register payment routes
+  registerPaymentRoutes(app);
   // Agent routes
   app.get("/api/agents", async (req, res) => {
     try {

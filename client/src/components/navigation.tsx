@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Settings, BarChart3, CreditCard, Bot, Users, Home, Database } from "lucide-react";
+import { Settings, BarChart3, CreditCard, Bot, Users, Home, Database, MessageCircle, Smartphone } from "lucide-react";
 
 export default function Navigation() {
   const [location] = useLocation();
@@ -9,6 +9,8 @@ export default function Navigation() {
     { path: "/", label: "Dashboard", icon: Home },
     { path: "/agents", label: "Agent Wizard", icon: Bot },
     { path: "/my-agents", label: "My Agents", icon: Users },
+    { path: "/consultation", label: "Book Consultation", icon: MessageCircle },
+    { path: "/payment-demo", label: "Payment Demo", icon: Smartphone },
     { path: "/rag", label: "RAG Knowledge", icon: Database },
     { path: "/analytics", label: "Analytics", icon: BarChart3 },
     { path: "/billing", label: "Billing", icon: CreditCard },
