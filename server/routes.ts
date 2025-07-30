@@ -9,6 +9,7 @@ import { ConversationalPaymentService, ConversationContext } from "./conversatio
 import { CalendarIntegrationService, BookingRequest, CalendarConfig } from "./calendar-integration";
 import { InsightsIntegrationService, PaymentInsight, AppointmentInsight, PurchaseInsight } from "./insights-integration";
 import { CalendarPluginManager } from "./calendar-plugins";
+import { EnterpriseAnalyticsService, ConversationInsight, AgentPerformanceInsight, CustomerInsight, SystemPerformanceInsight, enterpriseAnalytics } from "./enterprise-analytics";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize services
@@ -16,6 +17,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const calendarService = new CalendarIntegrationService();
   const insightsService = new InsightsIntegrationService();
   const calendarPluginManager = new CalendarPluginManager();
+  const analyticsService = new EnterpriseAnalyticsService();
 
   // Register payment routes
   registerPaymentRoutes(app);
@@ -511,6 +513,178 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const metrics = await insightsService.getPurchaseMetrics(agentId, dateRange);
       res.json(metrics);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  // Enterprise Analytics Routes
+  app.post("/api/analytics/conversation", async (req, res) => {
+    try {
+      const insight: ConversationInsight = req.body;
+      await analyticsService.recordConversationInsight(insight);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.get("/api/analytics/agent/:agentId/performance", async (req, res) => {
+    try {
+      const { agentId } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      const timeRange = startDate && endDate ? {
+        start: new Date(startDate as string),
+        end: new Date(endDate as string)
+      } : undefined;
+      
+      const performance = await analyticsService.getAgentPerformanceInsight(agentId, timeRange);
+      res.json(performance);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.get("/api/analytics/customer/:customerId/insight", async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      const insight = await analyticsService.getCustomerInsight(customerId);
+      res.json(insight);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.get("/api/analytics/system/performance", async (req, res) => {
+    try {
+      const systemInsight = await analyticsService.getSystemPerformanceInsight();
+      res.json(systemInsight);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.post("/api/analytics/sync", async (req, res) => {
+    try {
+      await analyticsService.syncWithMicroservices();
+      res.json({ success: true, message: "Cross-microservice sync completed" });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  // Comprehensive Analytics Dashboard Data
+  app.get("/api/analytics/dashboard/:agentId", async (req, res) => {
+    try {
+      const { agentId } = req.params;
+      const { timeframe } = req.query;
+      
+      const days = timeframe === 'week' ? 7 : timeframe === 'month' ? 30 : 7;
+      const timeRange = {
+        start: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
+        end: new Date()
+      };
+
+      const [
+        agentPerformance,
+        appointmentMetrics,
+        purchaseMetrics,
+        systemPerformance
+      ] = await Promise.all([
+        analyticsService.getAgentPerformanceInsight(agentId, timeRange),
+        insightsService.getAppointmentMetrics(agentId, timeRange),
+        insightsService.getPurchaseMetrics(agentId, timeRange),
+        analyticsService.getSystemPerformanceInsight()
+      ]);
+
+      res.json({
+        agentPerformance,
+        appointmentMetrics,
+        purchaseMetrics,
+        systemOverview: systemPerformance.overallMetrics,
+        realTimeAlerts: systemPerformance.realTimeAlerts,
+        trends: systemPerformance.trends
+      });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  // Multi-Agent Comparison Analytics
+  app.get("/api/analytics/comparison", async (req, res) => {
+    try {
+      const { agents, timeframe } = req.query;
+      const agentIds = (agents as string).split(',');
+      const days = timeframe === 'week' ? 7 : timeframe === 'month' ? 30 : 7;
+      
+      const timeRange = {
+        start: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
+        end: new Date()
+      };
+
+      const comparisons = await Promise.all(
+        agentIds.map(async (agentId) => {
+          const performance = await analyticsService.getAgentPerformanceInsight(agentId, timeRange);
+          return {
+            agentId: agentId,
+            performanceGrade: performance.performanceGrade,
+            conversationMetrics: performance.conversationMetrics,
+            businessMetrics: performance.businessMetrics,
+            platformBreakdown: performance.platformBreakdown,
+            industrySpecificMetrics: performance.industrySpecificMetrics,
+            improvementAreas: performance.improvementAreas,
+            strengths: performance.strengths
+          };
+        })
+      );
+
+      res.json({
+        comparisons,
+        summary: {
+          totalAgents: comparisons.length,
+          avgSatisfaction: comparisons.reduce((sum, c) => sum + c.conversationMetrics.customerSatisfactionAvg, 0) / comparisons.length,
+          totalRevenue: comparisons.reduce((sum, c) => sum + c.businessMetrics.totalRevenue, 0),
+          avgConversionRate: comparisons.reduce((sum, c) => sum + c.businessMetrics.conversionRate, 0) / comparisons.length
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  // Real-time Analytics Stream
+  app.get("/api/analytics/realtime/:agentId", async (req, res) => {
+    try {
+      const { agentId } = req.params;
+      
+      // Set headers for Server-Sent Events
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*'
+      });
+
+      // Send initial data
+      const systemPerformance = await analyticsService.getSystemPerformanceInsight();
+      res.write(`data: ${JSON.stringify(systemPerformance)}\n\n`);
+
+      // Set up interval to send updates every 30 seconds
+      const interval = setInterval(async () => {
+        try {
+          const updatedPerformance = await analyticsService.getSystemPerformanceInsight();
+          res.write(`data: ${JSON.stringify(updatedPerformance)}\n\n`);
+        } catch (error) {
+          console.error('Real-time analytics error:', error);
+        }
+      }, 30000);
+
+      // Clean up on client disconnect
+      req.on('close', () => {
+        clearInterval(interval);
+        res.end();
+      });
     } catch (error) {
       res.status(500).json({ error: String(error) });
     }
