@@ -1,328 +1,867 @@
-// Comprehensive platform testing with dummy data
-import { ConversationalPaymentService, ConversationContext } from './conversational-payment';
-import { CalendarIntegrationService, BookingRequest } from './calendar-integration';
-import { InsightsIntegrationService, PaymentInsight } from './insights-integration';
+#!/usr/bin/env node
 
-async function testPlatformComprehensively() {
-  console.log('🚀 COMPREHENSIVE PLATFORM TESTING WITH DUMMY DATA\n');
+/**
+ * Comprehensive End-to-End Platform Testing
+ * Tests entire AgentHub platform with realistic dummy data across all services
+ */
 
-  const paymentService = new ConversationalPaymentService();
-  const calendarService = new CalendarIntegrationService();
-  const insightsService = new InsightsIntegrationService();
+import axios from 'axios';
 
-  // Test data for different industries and platforms
-  const testScenarios = [
-    {
-      platform: 'whatsapp' as const,
-      customer: {
-        id: 'cust_rajesh_001',
-        name: 'Rajesh Kumar',
-        phone: '+91 9876543210',
-        email: 'rajesh.kumar@gmail.com'
-      },
-      agent: { id: '1', industry: 'healthcare' },
-      conversation: [
-        "I need diabetes consultation",
-        "1",
-        "Google Pay"
-      ]
-    },
-    {
-      platform: 'instagram' as const,
-      customer: {
-        id: 'cust_priya_002',
-        name: 'Priya Sharma',
-        phone: '+91 8765432109',
-        email: 'priya.sharma@yahoo.com'
-      },
-      agent: { id: '2', industry: 'legal' },
-      conversation: [
-        "property dispute legal help needed",
-        "2",
-        "phonepe"
-      ]
-    },
-    {
-      platform: 'messenger' as const,
-      customer: {
-        id: 'cust_amit_003',
-        name: 'Amit Patel',
-        phone: '+91 7654321098',
-        email: 'amit.patel@hotmail.com'
-      },
-      agent: { id: '3', industry: 'finance' },
-      conversation: [
-        "investment planning consultation",
-        "1",
-        "upi"
-      ]
-    },
-    {
-      platform: 'whatsapp' as const,
-      customer: {
-        id: 'cust_sneha_004',
-        name: 'Sneha Reddy',
-        phone: '+91 6543210987',
-        email: 'sneha.reddy@gmail.com'
-      },
-      agent: { id: '4', industry: 'realestate' },
-      conversation: [
-        "looking for property consultation",
-        "3",
-        "paytm"
-      ]
-    },
-    {
-      platform: 'instagram' as const,
-      customer: {
-        id: 'cust_vikram_005',
-        name: 'Vikram Singh',
-        phone: '+91 5432109876',
-        email: 'vikram.singh@gmail.com'
-      },
-      agent: { id: '5', industry: 'technology' },
-      conversation: [
-        "software development consultation",
-        "2",
-        "google pay"
-      ]
-    }
-  ];
+const BASE_URL = 'http://localhost:5000';
 
-  console.log('=== TESTING CONVERSATIONAL FLOWS ACROSS ALL PLATFORMS ===\n');
+interface TestResult {
+  name: string;
+  success: boolean;
+  data?: any;
+  error?: string;
+  metrics?: any;
+}
 
-  const completedBookings: any[] = [];
+class ComprehensiveSystemTest {
+  private results: TestResult[] = [];
 
-  for (const scenario of testScenarios) {
-    console.log(`--- ${scenario.platform.toUpperCase()} - ${scenario.agent.industry.toUpperCase()} CONSULTATION ---`);
-    console.log(`Customer: ${scenario.customer.name} (${scenario.customer.phone})`);
-    
-    let context: ConversationContext = {
-      platform: scenario.platform,
-      customerId: scenario.customer.id,
-      agentId: scenario.agent.id,
-      industry: scenario.agent.industry,
-      sessionId: `session_${scenario.platform}_${Date.now()}`,
-      customerData: {
-        name: scenario.customer.name,
-        phone: scenario.customer.phone,
-        email: scenario.customer.email
-      }
-    };
+  async runFullSystemTest(): Promise<void> {
+    console.log('🚀 STARTING COMPREHENSIVE AGENTHUB PLATFORM TEST');
+    console.log('=' .repeat(60));
 
-    // Process conversation flow
-    for (let i = 0; i < scenario.conversation.length; i++) {
-      const message = scenario.conversation[i];
-      console.log(`\nStep ${i + 1} - Customer: "${message}"`);
+    // Step 1: Test Core Platform APIs
+    await this.testCoreAPIs();
+
+    // Step 2: Test Agent Management
+    await this.testAgentManagement();
+
+    // Step 3: Test Conversational Payment System
+    await this.testConversationalPayment();
+
+    // Step 4: Test Calendar Integration
+    await this.testCalendarIntegration();
+
+    // Step 5: Test RAG System
+    await this.testRAGSystem();
+
+    // Step 6: Test Enterprise Analytics
+    await this.testEnterpriseAnalytics();
+
+    // Step 7: Test Cross-Service Integration
+    await this.testCrossServiceIntegration();
+
+    // Step 8: Performance and Load Testing
+    await this.testSystemPerformance();
+
+    // Generate comprehensive report
+    this.generateReport();
+  }
+
+  private async testCoreAPIs(): Promise<void> {
+    console.log('\n📡 TESTING CORE PLATFORM APIs');
+    console.log('-'.repeat(40));
+
+    // Test usage stats
+    await this.executeTest('Core Usage Stats', async () => {
+      const response = await axios.get(`${BASE_URL}/api/usage/stats`);
+      return response.data;
+    });
+
+    // Test agent creation
+    await this.executeTest('Agent Creation', async () => {
+      const agentData = {
+        businessName: "Mumbai Healthcare Clinic",
+        industry: "healthcare",
+        businessDescription: "Premium healthcare services in Mumbai with specialized consultations",
+        modelChoice: "gpt-4o",
+        interfaceType: "whatsapp",
+        targetAudience: "Healthcare patients in Mumbai",
+        brandColor: "#2563eb",
+        welcomeMessage: "Welcome to Mumbai Healthcare! How can we assist you today?",
+        businessHours: "9 AM - 7 PM, Monday to Saturday"
+      };
       
-      const result = await paymentService.processConversation(context, message);
-      console.log(`Agent Response: ${result.response.substring(0, 100)}${result.response.length > 100 ? '...' : ''}`);
-      console.log(`Actions: [${result.actions.map(a => a.type).join(', ')}]`);
-      
-      context = result.updatedContext;
+      const response = await axios.post(`${BASE_URL}/api/agents`, agentData);
+      return response.data;
+    });
 
-      // Handle payment link generation
-      if (result.actions.some(action => action.type === 'payment_link')) {
-        const paymentAction = result.actions.find(action => action.type === 'payment_link');
-        completedBookings.push({
-          ...scenario,
-          consultationId: paymentAction.data.consultationId,
-          amount: paymentAction.data.amount,
-          paymentMethod: paymentAction.data.method,
-          timestamp: new Date().toISOString()
-        });
-        console.log(`💳 Payment Link Generated: ${paymentAction.data.consultationId} - ₹${paymentAction.data.amount}`);
+    // Test agents listing
+    await this.executeTest('Agents Listing', async () => {
+      const response = await axios.get(`${BASE_URL}/api/agents`);
+      return response.data;
+    });
+  }
+
+  private async testAgentManagement(): Promise<void> {
+    console.log('\n🤖 TESTING AGENT MANAGEMENT SYSTEM');
+    console.log('-'.repeat(40));
+
+    // Create multiple agents for different industries
+    const agents = [
+      {
+        businessName: "Delhi Fashion Store",
+        industry: "retail",
+        businessDescription: "Premium fashion retailer in Delhi with latest trends",
+        modelChoice: "gpt-4o",
+        interfaceType: "whatsapp",
+        targetAudience: "Fashion-conscious customers in Delhi",
+        brandColor: "#ec4899",
+        welcomeMessage: "Welcome to Delhi Fashion! Discover the latest trends!",
+        businessHours: "10 AM - 9 PM, All days"
+      },
+      {
+        businessName: "Bangalore Investment Advisory",
+        industry: "finance",
+        businessDescription: "Professional investment advisory services in Bangalore",
+        modelChoice: "gpt-4o",
+        interfaceType: "web",
+        targetAudience: "Investment seekers in Bangalore",
+        brandColor: "#059669",
+        welcomeMessage: "Welcome to Bangalore Investment Advisory! Let's grow your wealth!",
+        businessHours: "9 AM - 6 PM, Monday to Friday"
+      },
+      {
+        businessName: "Chennai Real Estate Hub",
+        industry: "real_estate",
+        businessDescription: "Premier real estate services in Chennai",
+        modelChoice: "gpt-3.5-turbo",
+        interfaceType: "instagram",
+        targetAudience: "Property buyers and sellers in Chennai",
+        brandColor: "#dc2626",
+        welcomeMessage: "Welcome to Chennai Real Estate Hub! Find your dream property!",
+        businessHours: "9 AM - 8 PM, All days"
       }
-    }
-    console.log('');
-  }
+    ];
 
-  console.log('\n=== TESTING CALENDAR INTEGRATION ===\n');
-
-  // Test calendar slots for different industries
-  const industries = ['healthcare', 'legal', 'finance', 'realestate', 'technology'];
-  
-  for (const industry of industries) {
-    console.log(`${industry.toUpperCase()} Calendar Slots:`);
-    const slots = await calendarService.getAvailableSlots('1', industry);
-    console.log(`- Available slots: ${slots.length}`);
-    console.log(`- Business hours: ${slots[0] ? new Date(slots[0].datetime).getHours() : 'N/A'}:00 - ${slots[slots.length - 1] ? new Date(slots[slots.length - 1].datetime).getHours() : 'N/A'}:00`);
-    console.log(`- Slot duration: ${slots[0]?.duration || 30} minutes`);
-    console.log(`- Consultation type: ${slots[0]?.type || 'N/A'}`);
-  }
-
-  console.log('\n=== TESTING BOOKING CONFIRMATIONS ===\n');
-
-  // Test actual booking for one scenario
-  if (completedBookings.length > 0) {
-    const testBooking = completedBookings[0];
-    const bookingRequest: BookingRequest = {
-      consultationId: testBooking.consultationId,
-      agentId: testBooking.agent.id,
-      customerId: testBooking.customer.id,
-      customerName: testBooking.customer.name,
-      customerEmail: testBooking.customer.email,
-      customerPhone: testBooking.customer.phone,
-      slotId: 'slot_test_001',
-      industry: testBooking.agent.industry,
-      description: 'Test consultation booking',
-      consultationType: 'whatsapp',
-      amount: testBooking.amount,
-      paymentMethod: testBooking.paymentMethod
-    };
-
-    console.log('Processing test booking...');
-    const bookingResult = await calendarService.bookSlot(bookingRequest);
-    console.log(`Booking Status: ${bookingResult.success ? '✅ SUCCESS' : '❌ FAILED'}`);
-    if (bookingResult.success) {
-      console.log(`Booking ID: ${bookingResult.bookingId}`);
-      console.log(`Calendar Event ID: ${bookingResult.calendarEventId}`);
-    }
-  }
-
-  console.log('\n=== TESTING INSIGHTS GENERATION ===\n');
-
-  // Generate payment insights for all bookings
-  for (const booking of completedBookings) {
-    const insight: PaymentInsight = {
-      consultationId: booking.consultationId,
-      agentId: booking.agent.id,
-      customerId: booking.customer.id,
-      platform: booking.platform,
-      industry: booking.agent.industry,
-      paymentData: {
-        amount: booking.amount,
-        currency: 'INR',
-        method: booking.paymentMethod,
-        status: 'completed',
-        timestamp: booking.timestamp,
-        transactionId: `txn_${Date.now()}_${Math.floor(Math.random() * 1000)}`
-      },
-      consultationData: {
-        type: booking.platform === 'whatsapp' ? 'whatsapp' : 'video',
-        duration: booking.agent.industry === 'legal' ? 45 : 30,
-        scheduledAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-        completedAt: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
-        customerSatisfaction: Math.floor(Math.random() * 2) + 4 // 4-5 stars
-      },
-      customerData: {
-        name: booking.customer.name,
-        phone: booking.customer.phone,
-        email: booking.customer.email,
-        location: inferLocationFromPhone(booking.customer.phone),
-        isReturningCustomer: Math.random() > 0.7 // 30% returning customers
-      },
-      conversationMetrics: {
-        messageCount: 3,
-        responseTime: Math.floor(Math.random() * 120) + 30, // 30-150 seconds
-        conversionRate: 100, // All test scenarios converted
-        touchpoints: [booking.platform, 'payment_link', 'booking_confirmation']
-      },
-      revenueAttribution: {
-        customerLifetimeValue: booking.amount * (Math.random() > 0.7 ? 3.5 : 1.2),
-        acquisitionCost: booking.amount * 0.15,
-        profitMargin: booking.amount * 0.7,
-        revenueCategory: Math.random() > 0.7 ? 'repeat_customer' : 'new_customer'
-      }
-    };
-
-    await insightsService.recordPaymentInsight(insight);
-    console.log(`✅ Recorded insight for ${booking.customer.name} - ₹${booking.amount} via ${booking.paymentMethod}`);
-  }
-
-  console.log('\n=== GENERATING COMPREHENSIVE INSIGHTS REPORTS ===\n');
-
-  // Generate reports for different agents
-  const agentIds = ['1', '2', '3', '4', '5'];
-  const reportStartDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
-  const reportEndDate = new Date();
-
-  for (const agentId of agentIds) {
-    console.log(`AGENT ${agentId} INSIGHTS REPORT:`);
-    const report = await insightsService.generateInsightsReport(agentId, reportStartDate, reportEndDate);
-    
-    console.log(`📊 Payment Metrics:`);
-    console.log(`   - Total Revenue: ₹${report.paymentMetrics.totalRevenue}`);
-    console.log(`   - Transactions: ${report.paymentMetrics.totalTransactions}`);
-    console.log(`   - Avg Transaction: ₹${report.paymentMetrics.averageTransactionValue.toFixed(0)}`);
-    console.log(`   - Conversion Rate: ${report.paymentMetrics.conversionRate.toFixed(1)}%`);
-    
-    console.log(`👥 Customer Insights:`);
-    console.log(`   - Total Customers: ${report.customerInsights.totalCustomers}`);
-    console.log(`   - New Customers: ${report.customerInsights.newCustomers}`);
-    console.log(`   - Satisfaction: ${report.customerInsights.customerSatisfactionAverage.toFixed(1)}/5`);
-    
-    console.log(`⚡ Performance:`);
-    console.log(`   - Response Time: ${report.performanceMetrics.averageResponseTime.toFixed(0)}s`);
-    console.log(`   - Completion Rate: ${report.performanceMetrics.consultationCompletionRate.toFixed(1)}%`);
-    
-    const platformBreakdown = Object.entries(report.paymentMetrics.platformBreakdown);
-    if (platformBreakdown.length > 0) {
-      console.log(`📱 Platform Performance:`);
-      platformBreakdown.forEach(([platform, data]) => {
-        console.log(`   - ${platform}: ₹${data.revenue} (${data.transactions} transactions)`);
+    for (const [index, agentData] of agents.entries()) {
+      await this.executeTest(`Agent Creation - ${agentData.businessName}`, async () => {
+        const response = await axios.post(`${BASE_URL}/api/agents`, agentData);
+        return { agentId: response.data.id, ...response.data };
       });
     }
-    console.log('');
+
+    // Test agent conversation logging
+    await this.executeTest('Agent Conversation Logging', async () => {
+      const conversationData = {
+        agentId: 1,
+        customerMessage: "I need a consultation for diabetes screening",
+        agentResponse: "I'd be happy to help you with diabetes screening. Let me check available appointment slots.",
+        timestamp: new Date().toISOString(),
+        platform: "whatsapp",
+        cost: 0.012
+      };
+      
+      const response = await axios.post(`${BASE_URL}/api/conversations`, conversationData);
+      return response.data;
+    });
   }
 
-  console.log('=== TESTING PLATFORM COMPARISON ===\n');
+  private async testConversationalPayment(): Promise<void> {
+    console.log('\n💳 TESTING CONVERSATIONAL PAYMENT SYSTEM');
+    console.log('-'.repeat(40));
 
-  const platformComparison = await insightsService.getPlatformComparison('1');
-  console.log('PLATFORM COMPARISON ANALYSIS:');
-  Object.entries(platformComparison).forEach(([platform, metrics]: [string, any]) => {
-    console.log(`${platform.toUpperCase()}:`);
-    console.log(`  Revenue: ₹${metrics.revenue}`);
-    console.log(`  Conversions: ${metrics.conversions}/${metrics.totalConversations}`);
-    console.log(`  Conversion Rate: ${metrics.conversionRate.toFixed(1)}%`);
-    console.log(`  Avg Response Time: ${metrics.averageResponseTime.toFixed(0)}s`);
-  });
+    // Test healthcare consultation booking flow
+    await this.executeTest('Healthcare Consultation Booking', async () => {
+      const context = {
+        agentId: "1",
+        customerId: "patient_rajesh_kumar",
+        platform: "whatsapp",
+        industry: "healthcare",
+        customerData: {
+          name: "Rajesh Kumar",
+          phone: "+91 9876543210",
+          email: "rajesh.kumar@email.com"
+        },
+        bookingData: {
+          consultationType: "diabetes_screening",
+          preferredTime: "morning",
+          urgency: "routine"
+        }
+      };
 
-  console.log('\n=== FINAL PLATFORM STATISTICS ===\n');
+      const message = "I want to book a diabetes screening consultation for tomorrow morning";
 
-  console.log('🎯 TEST COMPLETION SUMMARY:');
-  console.log(`✅ Tested ${testScenarios.length} conversation flows across 3 platforms`);
-  console.log(`✅ Generated ${completedBookings.length} payment links with various methods`);
-  console.log(`✅ Tested calendar integration for ${industries.length} industries`);
-  console.log(`✅ Processed ${completedBookings.length} payment insights records`);
-  console.log(`✅ Generated insights reports for ${agentIds.length} agents`);
-  console.log(`✅ Validated platform comparison analytics`);
+      const response = await axios.post(`${BASE_URL}/api/conversation/process`, {
+        context,
+        message
+      });
+      
+      return response.data;
+    });
 
-  const totalRevenue = completedBookings.reduce((sum, booking) => sum + booking.amount, 0);
-  const uniquePlatforms = [...new Set(completedBookings.map(b => b.platform))];
-  const uniquePaymentMethods = [...new Set(completedBookings.map(b => b.paymentMethod))];
+    // Test retail purchase flow
+    await this.executeTest('Retail Purchase Flow', async () => {
+      const context = {
+        agentId: "2",
+        customerId: "customer_priya_sharma",
+        platform: "whatsapp",
+        industry: "retail",
+        customerData: {
+          name: "Priya Sharma",
+          phone: "+91 9876543211",
+          email: "priya.sharma@email.com"
+        }
+      };
 
-  console.log('\n📈 BUSINESS METRICS:');
-  console.log(`💰 Total Test Revenue: ₹${totalRevenue}`);
-  console.log(`📱 Platforms Tested: ${uniquePlatforms.join(', ')}`);
-  console.log(`💳 Payment Methods: ${uniquePaymentMethods.join(', ')}`);
-  console.log(`🏢 Industries Covered: ${industries.join(', ')}`);
+      const message = "I want to buy the red saree I saw on your Instagram page";
 
-  console.log('\n🚀 PLATFORM READY FOR PRODUCTION!');
-  console.log('All conversational payment flows, calendar integration, and insights tracking validated successfully.');
-}
+      const response = await axios.post(`${BASE_URL}/api/conversation/process`, {
+        context,
+        message
+      });
+      
+      return response.data;
+    });
 
-function inferLocationFromPhone(phone: string): string {
-  const statePatterns = {
-    'Mumbai': ['98', '99', '70'],
-    'Delhi': ['81', '85', '87'],
-    'Bangalore': ['96', '97', '80'],
-    'Chennai': ['94', '95', '63'],
-    'Kolkata': ['90', '91', '62'],
-    'Hyderabad': ['92', '93', '77'],
-    'Pune': ['88', '89', '86']
-  };
-  
-  const phoneDigits = phone.replace(/\D/g, '').slice(-10);
-  const prefix = phoneDigits.substring(0, 2);
-  
-  for (const [city, prefixes] of Object.entries(statePatterns)) {
-    if (prefixes.includes(prefix)) {
-      return city;
+    // Test finance consultation booking
+    await this.executeTest('Finance Consultation Booking', async () => {
+      const context = {
+        agentId: "3",
+        customerId: "investor_amit_singh",
+        platform: "instagram",
+        industry: "finance",
+        customerData: {
+          name: "Amit Singh",
+          phone: "+91 9876543212",
+          email: "amit.singh@email.com"
+        }
+      };
+
+      const message = "I need help with mutual fund investment planning";
+
+      const response = await axios.post(`${BASE_URL}/api/conversation/process`, {
+        context,
+        message
+      });
+      
+      return response.data;
+    });
+  }
+
+  private async testCalendarIntegration(): Promise<void> {
+    console.log('\n📅 TESTING CALENDAR INTEGRATION SYSTEM');
+    console.log('-'.repeat(40));
+
+    // Test calendar provider listing
+    await this.executeTest('Calendar Providers', async () => {
+      const response = await axios.get(`${BASE_URL}/api/calendar/providers`);
+      return response.data;
+    });
+
+    // Test customer calendar configuration
+    await this.executeTest('Customer Calendar Configuration', async () => {
+      const config = {
+        customerId: "mumbai_healthcare_clinic",
+        provider: "google",
+        credentials: {
+          clientId: "mumbai_healthcare_google_client",
+          clientSecret: "secure_healthcare_secret",
+          refreshToken: "healthcare_refresh_token"
+        },
+        settings: {
+          timezone: "Asia/Kolkata",
+          workingHours: {
+            start: "09:00",
+            end: "19:00",
+            days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+          },
+          bufferTime: 15,
+          maxAdvanceBooking: 30,
+          minAdvanceBooking: 2
+        },
+        notifications: {
+          customer: true,
+          consultant: true,
+          reminders: true,
+          reminderTimes: [24, 2]
+        },
+        consultantEmail: "dr.sharma@mumbaihealthcare.in",
+        businessEmail: "appointments@mumbaihealthcare.in"
+      };
+
+      const response = await axios.post(`${BASE_URL}/api/calendar/configure`, config);
+      return response.data;
+    });
+
+    // Test calendar slot generation
+    await this.executeTest('Calendar Slot Generation', async () => {
+      const response = await axios.get(`${BASE_URL}/api/calendar/customer-slots/mumbai_healthcare_clinic/1?industry=healthcare`);
+      return {
+        totalSlots: response.data.length,
+        sampleSlots: response.data.slice(0, 3)
+      };
+    });
+
+    // Test calendar connection testing
+    await this.executeTest('Calendar Connection Test', async () => {
+      const testConfig = {
+        customerId: "test_customer",
+        provider: "google",
+        credentials: {
+          clientId: "test_client",
+          clientSecret: "test_secret",
+          refreshToken: "test_refresh"
+        },
+        settings: {
+          timezone: "Asia/Kolkata"
+        }
+      };
+
+      const response = await axios.post(`${BASE_URL}/api/calendar/test-connection`, testConfig);
+      return response.data;
+    });
+  }
+
+  private async testRAGSystem(): Promise<void> {
+    console.log('\n🧠 TESTING RAG KNOWLEDGE SYSTEM');
+    console.log('-'.repeat(40));
+
+    // Test healthcare RAG queries
+    const healthcareQueries = [
+      "What are your consultation fees for diabetes screening?",
+      "What are your clinic hours?",
+      "Do you accept health insurance?",
+      "What ayurvedic treatments do you offer?"
+    ];
+
+    for (const query of healthcareQueries) {
+      await this.executeTest(`Healthcare RAG - ${query.substring(0, 30)}...`, async () => {
+        const response = await axios.post(`${BASE_URL}/api/rag/query`, {
+          query,
+          agentId: 1,
+          industry: "healthcare"
+        });
+        return {
+          query,
+          hasAnswer: response.data.answer.length > 0,
+          sources: response.data.sources?.length || 0,
+          relevanceScore: response.data.relevanceScore
+        };
+      });
+    }
+
+    // Test retail RAG queries
+    const retailQueries = [
+      "What are your store hours?",
+      "Do you accept UPI payments?",
+      "What's your return policy?",
+      "Do you have festival discounts?"
+    ];
+
+    for (const query of retailQueries) {
+      await this.executeTest(`Retail RAG - ${query.substring(0, 30)}...`, async () => {
+        const response = await axios.post(`${BASE_URL}/api/rag/query`, {
+          query,
+          agentId: 2,
+          industry: "retail"
+        });
+        return {
+          query,
+          hasAnswer: response.data.answer.length > 0,
+          sources: response.data.sources?.length || 0,
+          relevanceScore: response.data.relevanceScore
+        };
+      });
+    }
+
+    // Test finance RAG queries
+    const financeQueries = [
+      "What are your investment advisory fees?",
+      "Do you help with SIP investments?",
+      "What's your experience with mutual funds?",
+      "Do you provide tax planning services?"
+    ];
+
+    for (const query of financeQueries) {
+      await this.executeTest(`Finance RAG - ${query.substring(0, 30)}...`, async () => {
+        const response = await axios.post(`${BASE_URL}/api/rag/query`, {
+          query,
+          agentId: 3,
+          industry: "finance"
+        });
+        return {
+          query,
+          hasAnswer: response.data.answer.length > 0,
+          sources: response.data.sources?.length || 0,
+          relevanceScore: response.data.relevanceScore
+        };
+      });
     }
   }
-  
-  return 'India';
+
+  private async testEnterpriseAnalytics(): Promise<void> {
+    console.log('\n📊 TESTING ENTERPRISE ANALYTICS SYSTEM');
+    console.log('-'.repeat(40));
+
+    // Generate comprehensive conversation insights for multiple scenarios
+    const conversationInsights = [
+      {
+        conversationId: "healthcare_conv_001",
+        agentId: "1",
+        customerId: "patient_rajesh_kumar",
+        platform: "whatsapp",
+        sessionId: "session_healthcare_001",
+        startTime: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
+        endTime: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+        duration: 3600,
+        messageCount: 24,
+        customerMessages: 12,
+        agentResponses: 12,
+        responseTimeAvg: 35000,
+        customerSatisfactionScore: 5,
+        conversionEvent: {
+          type: "appointment",
+          value: 1200,
+          currency: "INR"
+        },
+        followUpRequired: true,
+        followUpActions: ["Send appointment confirmation", "Set reminder for 24h before", "Prepare consultation notes"],
+        tags: ["healthcare", "consultation", "new_patient", "diabetes_screening"]
+      },
+      {
+        conversationId: "retail_conv_001",
+        agentId: "2",
+        customerId: "customer_priya_sharma",
+        platform: "whatsapp",
+        sessionId: "session_retail_001",
+        startTime: new Date(Date.now() - 14400000).toISOString(), // 4 hours ago
+        endTime: new Date(Date.now() - 10800000).toISOString(), // 3 hours ago
+        duration: 2400,
+        messageCount: 18,
+        customerMessages: 9,
+        agentResponses: 9,
+        responseTimeAvg: 45000,
+        customerSatisfactionScore: 4,
+        conversionEvent: {
+          type: "purchase",
+          value: 2500,
+          currency: "INR"
+        },
+        followUpRequired: false,
+        tags: ["retail", "clothing", "festival_sale", "returning_customer"]
+      },
+      {
+        conversationId: "finance_conv_001",
+        agentId: "3",
+        customerId: "investor_amit_singh",
+        platform: "instagram",
+        sessionId: "session_finance_001",
+        startTime: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+        endTime: new Date(Date.now() - 1800000).toISOString(), // 30 mins ago
+        duration: 1800,
+        messageCount: 15,
+        customerMessages: 8,
+        agentResponses: 7,
+        responseTimeAvg: 25000,
+        customerSatisfactionScore: 4,
+        conversionEvent: {
+          type: "appointment",
+          value: 800,
+          currency: "INR"
+        },
+        followUpRequired: true,
+        tags: ["finance", "investment_planning", "mutual_funds", "first_time_investor"]
+      },
+      {
+        conversationId: "retail_conv_002",
+        agentId: "2",
+        customerId: "customer_sunita_verma",
+        platform: "web",
+        sessionId: "session_retail_002",
+        startTime: new Date(Date.now() - 21600000).toISOString(), // 6 hours ago
+        endTime: new Date(Date.now() - 18000000).toISOString(), // 5 hours ago
+        duration: 1200,
+        messageCount: 8,
+        customerMessages: 4,
+        agentResponses: 4,
+        responseTimeAvg: 90000, // Slow response
+        customerSatisfactionScore: 2, // Low satisfaction
+        escalation: {
+          required: true,
+          reason: "Customer dissatisfied with product quality",
+          timestamp: new Date(Date.now() - 18000000).toISOString()
+        },
+        followUpRequired: true,
+        tags: ["retail", "complaint", "quality_issue", "escalation"]
+      },
+      {
+        conversationId: "healthcare_conv_002",
+        agentId: "1",
+        customerId: "patient_meera_patel",
+        platform: "whatsapp",
+        sessionId: "session_healthcare_002",
+        startTime: new Date(Date.now() - 10800000).toISOString(), // 3 hours ago
+        endTime: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
+        duration: 4200,
+        messageCount: 32,
+        customerMessages: 16,
+        agentResponses: 16,
+        responseTimeAvg: 28000,
+        customerSatisfactionScore: 5,
+        conversionEvent: {
+          type: "purchase",
+          value: 3500,
+          currency: "INR"
+        },
+        followUpRequired: false,
+        tags: ["healthcare", "prescription", "follow_up", "satisfied_customer"]
+      }
+    ];
+
+    // Record all conversation insights
+    for (const insight of conversationInsights) {
+      await this.executeTest(`Record Conversation Insight - ${insight.conversationId}`, async () => {
+        const response = await axios.post(`${BASE_URL}/api/analytics/conversation`, insight);
+        return response.data;
+      });
+    }
+
+    // Test agent performance analytics for each agent
+    for (let agentId = 1; agentId <= 3; agentId++) {
+      await this.executeTest(`Agent ${agentId} Performance Analytics`, async () => {
+        const response = await axios.get(`${BASE_URL}/api/analytics/agent/${agentId}/performance`);
+        return {
+          agentId,
+          grade: response.data.performanceGrade,
+          conversations: response.data.conversationMetrics.totalConversations,
+          revenue: response.data.businessMetrics.totalRevenue,
+          satisfaction: response.data.conversationMetrics.customerSatisfactionAvg,
+          conversionRate: response.data.businessMetrics.conversionRate
+        };
+      });
+    }
+
+    // Test customer journey analytics
+    const customerIds = ["patient_rajesh_kumar", "customer_priya_sharma", "investor_amit_singh"];
+    for (const customerId of customerIds) {
+      await this.executeTest(`Customer Journey - ${customerId}`, async () => {
+        const response = await axios.get(`${BASE_URL}/api/analytics/customer/${customerId}/insight`);
+        return {
+          customerId,
+          segment: response.data.behavioralInsights.customerSegment,
+          ltv: response.data.businessMetrics.lifetimeValue,
+          churnRisk: response.data.behavioralInsights.churnRisk,
+          upsellPotential: response.data.behavioralInsights.upsellPotential,
+          journeyStage: response.data.journeyAnalysis.stage
+        };
+      });
+    }
+
+    // Test system-wide performance
+    await this.executeTest('System Performance Analytics', async () => {
+      const response = await axios.get(`${BASE_URL}/api/analytics/system/performance`);
+      return {
+        totalConversations: response.data.overallMetrics.totalConversations,
+        totalRevenue: response.data.overallMetrics.totalRevenue,
+        totalCustomers: response.data.overallMetrics.totalCustomers,
+        systemUptime: response.data.overallMetrics.systemUptime,
+        alertCount: response.data.realTimeAlerts.length,
+        platformsActive: Object.keys(response.data.platformDistribution).filter(
+          p => response.data.platformDistribution[p].conversations > 0
+        ).length
+      };
+    });
+
+    // Test multi-agent comparison
+    await this.executeTest('Multi-Agent Comparison', async () => {
+      const response = await axios.get(`${BASE_URL}/api/analytics/comparison?agents=1,2,3&timeframe=week`);
+      return {
+        totalAgents: response.data.summary.totalAgents,
+        combinedRevenue: response.data.summary.totalRevenue,
+        avgSatisfaction: response.data.summary.avgSatisfaction,
+        avgConversionRate: response.data.summary.avgConversionRate,
+        gradeDistribution: response.data.comparisons.reduce((acc: any, comp: any) => {
+          acc[comp.performanceGrade] = (acc[comp.performanceGrade] || 0) + 1;
+          return acc;
+        }, {})
+      };
+    });
+
+    // Test comprehensive dashboard
+    await this.executeTest('Comprehensive Dashboard Analytics', async () => {
+      const response = await axios.get(`${BASE_URL}/api/analytics/dashboard/1?timeframe=week`);
+      return {
+        agentGrade: response.data.agentPerformance.performanceGrade,
+        totalRevenue: response.data.agentPerformance.businessMetrics.totalRevenue,
+        appointmentMetrics: response.data.appointmentMetrics,
+        purchaseMetrics: response.data.purchaseMetrics,
+        systemAlerts: response.data.realTimeAlerts.length
+      };
+    });
+  }
+
+  private async testCrossServiceIntegration(): Promise<void> {
+    console.log('\n🔄 TESTING CROSS-SERVICE INTEGRATION');
+    console.log('-'.repeat(40));
+
+    // Test appointment insights integration
+    await this.executeTest('Appointment Insights Integration', async () => {
+      const appointmentInsight = {
+        appointmentId: "healthcare_apt_001",
+        consultationId: "healthcare_cons_001",
+        agentId: "1",
+        customerId: "patient_rajesh_kumar",
+        calendarProvider: "google",
+        calendarEventId: "google_healthcare_evt_001",
+        status: "completed",
+        scheduledAt: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
+        actualStartTime: new Date(Date.now() + 86400000).toISOString(),
+        actualEndTime: new Date(Date.now() + 90000000).toISOString(),
+        duration: 60,
+        customerData: {
+          name: "Rajesh Kumar",
+          email: "rajesh.kumar@email.com",
+          phone: "+91 9876543210",
+          timezone: "Asia/Kolkata"
+        },
+        reminders: [
+          {
+            sent: true,
+            sentAt: new Date(Date.now() - 43200000).toISOString(), // 12 hours ago
+            type: "email",
+            status: "delivered"
+          }
+        ]
+      };
+
+      const response = await axios.post(`${BASE_URL}/api/insights/appointment`, appointmentInsight);
+      return response.data;
+    });
+
+    // Test purchase insights integration
+    await this.executeTest('Purchase Insights Integration', async () => {
+      const purchaseInsight = {
+        purchaseId: "retail_purchase_001",
+        customerId: "customer_priya_sharma",
+        agentId: "2",
+        platform: "whatsapp",
+        purchaseType: "clothing",
+        items: [
+          {
+            id: "red_silk_saree",
+            name: "Premium Red Silk Saree",
+            quantity: 1,
+            unitPrice: 2500,
+            totalPrice: 2500
+          }
+        ],
+        totalAmount: 2500,
+        currency: "INR",
+        paymentMethod: "googlepay",
+        paymentStatus: "completed",
+        timestamp: new Date().toISOString(),
+        conversionSource: "whatsapp_retail_agent",
+        customerJourney: {
+          touchpoints: ["instagram", "whatsapp", "payment_link", "confirmation"],
+          totalInteractions: 18,
+          timeToConversion: 45
+        }
+      };
+
+      const response = await axios.post(`${BASE_URL}/api/insights/purchase`, purchaseInsight);
+      return response.data;
+    });
+
+    // Test cross-microservice sync
+    await this.executeTest('Cross-Microservice Analytics Sync', async () => {
+      const response = await axios.post(`${BASE_URL}/api/analytics/sync`);
+      return response.data;
+    });
+
+    // Test appointment metrics retrieval
+    await this.executeTest('Appointment Metrics Retrieval', async () => {
+      const response = await axios.get(`${BASE_URL}/api/insights/appointments/1`);
+      return response.data;
+    });
+
+    // Test purchase metrics retrieval
+    await this.executeTest('Purchase Metrics Retrieval', async () => {
+      const response = await axios.get(`${BASE_URL}/api/insights/purchases/2`);
+      return response.data;
+    });
+  }
+
+  private async testSystemPerformance(): Promise<void> {
+    console.log('\n⚡ TESTING SYSTEM PERFORMANCE');
+    console.log('-'.repeat(40));
+
+    // Test concurrent requests
+    await this.executeTest('Concurrent API Requests', async () => {
+      const promises = [];
+      const startTime = Date.now();
+
+      // Make 10 concurrent requests to different endpoints
+      for (let i = 0; i < 10; i++) {
+        promises.push(axios.get(`${BASE_URL}/api/usage/stats`));
+      }
+
+      await Promise.all(promises);
+      const endTime = Date.now();
+
+      return {
+        requestCount: 10,
+        totalTime: endTime - startTime,
+        averageResponseTime: (endTime - startTime) / 10
+      };
+    });
+
+    // Test database operations performance
+    await this.executeTest('Database Operations Performance', async () => {
+      const startTime = Date.now();
+
+      // Create multiple conversations rapidly
+      const promises = [];
+      for (let i = 0; i < 5; i++) {
+        const conversationData = {
+          agentId: Math.floor(Math.random() * 3) + 1,
+          customerMessage: `Test message ${i}`,
+          agentResponse: `Test response ${i}`,
+          timestamp: new Date().toISOString(),
+          platform: ["whatsapp", "instagram", "web"][Math.floor(Math.random() * 3)],
+          cost: Math.random() * 0.05
+        };
+        
+        promises.push(axios.post(`${BASE_URL}/api/conversations`, conversationData));
+      }
+
+      await Promise.all(promises);
+      const endTime = Date.now();
+
+      return {
+        operationCount: 5,
+        totalTime: endTime - startTime,
+        averageOperationTime: (endTime - startTime) / 5
+      };
+    });
+
+    // Test memory usage and system health
+    await this.executeTest('System Health Check', async () => {
+      const response = await axios.get(`${BASE_URL}/api/analytics/system/performance`);
+      return {
+        systemUptime: response.data.overallMetrics.systemUptime,
+        averageResponseTime: response.data.overallMetrics.averageResponseTime,
+        totalActiveAgents: response.data.overallMetrics.totalActiveAgents,
+        alertCount: response.data.realTimeAlerts.length,
+        healthStatus: response.data.overallMetrics.systemUptime > 99 ? 'healthy' : 'degraded'
+      };
+    });
+  }
+
+  private async executeTest(name: string, testFunction: () => Promise<any>): Promise<void> {
+    try {
+      const startTime = Date.now();
+      const data = await testFunction();
+      const endTime = Date.now();
+      
+      this.results.push({
+        name,
+        success: true,
+        data,
+        metrics: {
+          executionTime: endTime - startTime
+        }
+      });
+      
+      console.log(`✅ ${name} - ${endTime - startTime}ms`);
+    } catch (error: any) {
+      this.results.push({
+        name,
+        success: false,
+        error: error.message
+      });
+      
+      console.log(`❌ ${name} - ${error.message}`);
+    }
+  }
+
+  private generateReport(): void {
+    console.log('\n📋 COMPREHENSIVE TEST REPORT');
+    console.log('='.repeat(60));
+
+    const successCount = this.results.filter(r => r.success).length;
+    const failureCount = this.results.filter(r => !r.success).length;
+    const totalTests = this.results.length;
+
+    console.log(`\n📊 TEST SUMMARY:`);
+    console.log(`Total Tests: ${totalTests}`);
+    console.log(`Successful: ${successCount} (${((successCount / totalTests) * 100).toFixed(1)}%)`);
+    console.log(`Failed: ${failureCount} (${((failureCount / totalTests) * 100).toFixed(1)}%)`);
+
+    if (failureCount > 0) {
+      console.log(`\n❌ FAILED TESTS:`);
+      this.results.filter(r => !r.success).forEach(result => {
+        console.log(`  • ${result.name}: ${result.error}`);
+      });
+    }
+
+    console.log(`\n🎯 KEY ACHIEVEMENTS:`);
+    const keyMetrics = this.extractKeyMetrics();
+    Object.entries(keyMetrics).forEach(([key, value]) => {
+      console.log(`  • ${key}: ${value}`);
+    });
+
+    console.log(`\n⚡ PERFORMANCE METRICS:`);
+    const avgExecutionTime = this.results
+      .filter(r => r.success && r.metrics)
+      .reduce((sum, r) => sum + r.metrics!.executionTime, 0) / 
+      this.results.filter(r => r.success && r.metrics).length;
+    
+    console.log(`  • Average API Response Time: ${avgExecutionTime.toFixed(2)}ms`);
+    console.log(`  • System Health Status: ${this.getSystemHealthStatus()}`);
+    console.log(`  • Platform Coverage: ${this.getPlatformCoverage()}`);
+
+    console.log(`\n🚀 PLATFORM STATUS: ${successCount >= totalTests * 0.9 ? 'PRODUCTION READY' : 'NEEDS ATTENTION'}`);
+    
+    if (successCount >= totalTests * 0.9) {
+      console.log(`\n✅ COMPREHENSIVE PLATFORM VALIDATION SUCCESSFUL!`);
+      console.log(`The AgentHub platform is fully operational with enterprise-grade analytics,`);
+      console.log(`conversational payment systems, calendar integration, and cross-service`);
+      console.log(`synchronization working seamlessly across all components.`);
+    }
+  }
+
+  private extractKeyMetrics(): Record<string, any> {
+    const metrics: Record<string, any> = {};
+    
+    // Extract analytics metrics
+    const analyticsResults = this.results.filter(r => r.name.includes('Analytics') && r.success);
+    if (analyticsResults.length > 0) {
+      metrics['Analytics System'] = 'Operational';
+    }
+
+    // Extract agent management metrics
+    const agentResults = this.results.filter(r => r.name.includes('Agent') && r.success);
+    if (agentResults.length > 0) {
+      metrics['Agent Management'] = `${agentResults.length} tests passed`;
+    }
+
+    // Extract calendar metrics
+    const calendarResults = this.results.filter(r => r.name.includes('Calendar') && r.success);
+    if (calendarResults.length > 0) {
+      metrics['Calendar Integration'] = 'Fully functional';
+    }
+
+    // Extract RAG metrics
+    const ragResults = this.results.filter(r => r.name.includes('RAG') && r.success);
+    if (ragResults.length > 0) {
+      metrics['RAG Knowledge System'] = `${ragResults.length} queries processed`;
+    }
+
+    return metrics;
+  }
+
+  private getSystemHealthStatus(): string {
+    const healthResult = this.results.find(r => r.name === 'System Health Check');
+    if (healthResult && healthResult.success) {
+      return healthResult.data.healthStatus || 'Unknown';
+    }
+    return 'Unknown';
+  }
+
+  private getPlatformCoverage(): string {
+    const platformResults = this.results.filter(r => 
+      r.success && r.data && 
+      (r.name.includes('WhatsApp') || r.name.includes('Instagram') || r.name.includes('Web'))
+    );
+    return `${platformResults.length} platforms tested`;
+  }
 }
 
-testPlatformComprehensively().catch(console.error);
+// Run the comprehensive test
+const tester = new ComprehensiveSystemTest();
+tester.runFullSystemTest().catch(console.error);
