@@ -6,14 +6,16 @@ import { z } from "zod";
 import { ragRoutes } from "./rag";
 import { registerPaymentRoutes } from './payment-routes';
 import { ConversationalPaymentService, ConversationContext } from "./conversational-payment";
-import { CalendarIntegrationService, BookingRequest } from "./calendar-integration";
-import { InsightsIntegrationService, PaymentInsight } from "./insights-integration";
+import { CalendarIntegrationService, BookingRequest, CalendarConfig } from "./calendar-integration";
+import { InsightsIntegrationService, PaymentInsight, AppointmentInsight, PurchaseInsight } from "./insights-integration";
+import { CalendarPluginManager } from "./calendar-plugins";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize services
   const conversationalPaymentService = new ConversationalPaymentService();
   const calendarService = new CalendarIntegrationService();
   const insightsService = new InsightsIntegrationService();
+  const calendarPluginManager = new CalendarPluginManager();
 
   // Register payment routes
   registerPaymentRoutes(app);
@@ -46,7 +48,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             consultationData: {
               type: context.bookingData?.consultationType || 'whatsapp',
               duration: 30,
-              scheduledAt: new Date().toISOString()
+              scheduledAt: new Date().toISOString(),
+              status: 'scheduled'
             },
             customerData: {
               name: context.customerData.name || 'Unknown',
@@ -408,6 +411,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Agent chat failed:', error);
       res.status(500).json({ message: "Chat failed" });
+    }
+  });
+
+  // Calendar configuration routes
+  app.post("/api/calendar/configure", async (req, res) => {
+    try {
+      const config: CalendarConfig = req.body;
+      const result = await calendarService.configureCustomerCalendar(config);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.get("/api/calendar/providers", async (req, res) => {
+    try {
+      const providers = calendarPluginManager.getAvailableProviders();
+      res.json({ providers });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.post("/api/calendar/test-connection", async (req, res) => {
+    try {
+      const config: CalendarConfig = req.body;
+      const result = await calendarPluginManager.testConnection(config);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.get("/api/calendar/customer-slots/:customerId/:agentId", async (req, res) => {
+    try {
+      const { customerId, agentId } = req.params;
+      const { industry } = req.query;
+      
+      const slots = await calendarService.getSlotsWithCustomerConfig(
+        customerId, 
+        agentId, 
+        industry as string
+      );
+      
+      res.json(slots);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  // Enhanced insights routes
+  app.post("/api/insights/appointment", async (req, res) => {
+    try {
+      const insight: AppointmentInsight = req.body;
+      await insightsService.recordAppointmentInsight(insight);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.post("/api/insights/purchase", async (req, res) => {
+    try {
+      const insight: PurchaseInsight = req.body;
+      await insightsService.recordPurchaseInsight(insight);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.get("/api/insights/appointments/:agentId", async (req, res) => {
+    try {
+      const { agentId } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      const dateRange = {
+        start: startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        end: endDate ? new Date(endDate as string) : new Date()
+      };
+      
+      const metrics = await insightsService.getAppointmentMetrics(agentId, dateRange);
+      res.json(metrics);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.get("/api/insights/purchases/:agentId", async (req, res) => {
+    try {
+      const { agentId } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      const dateRange = {
+        start: startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        end: endDate ? new Date(endDate as string) : new Date()
+      };
+      
+      const metrics = await insightsService.getPurchaseMetrics(agentId, dateRange);
+      res.json(metrics);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
     }
   });
 

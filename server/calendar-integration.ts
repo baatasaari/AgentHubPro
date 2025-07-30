@@ -26,20 +26,41 @@ export interface BookingRequest {
 }
 
 export interface CalendarConfig {
-  provider: 'google' | 'outlook' | 'caldav' | 'generic';
-  apiCredentials: {
+  customerId: string;
+  provider: 'google' | 'outlook' | 'apple' | 'calendly' | 'acuity' | 'internal';
+  credentials: {
     clientId?: string;
     clientSecret?: string;
     refreshToken?: string;
+    accessToken?: string;
+    apiKey?: string;
+    webhookUrl?: string;
     calendarId?: string;
+  };
+  settings: {
+    timezone: string;
+    workingHours: {
+      start: string;
+      end: string;
+      days: string[];
+    };
+    bufferTime: number; // minutes between appointments
+    maxAdvanceBooking: number; // days
+    minAdvanceBooking: number; // hours
+  };
+  notifications: {
+    customer: boolean;
+    consultant: boolean;
+    reminders: boolean;
+    reminderTimes: number[]; // hours before appointment
   };
   consultantEmail: string;
   businessEmail: string;
-  timezone: string;
 }
 
 export class CalendarIntegrationService {
   private emailTransporter: nodemailer.Transporter;
+  private customerConfigs: Map<string, CalendarConfig> = new Map();
   
   constructor() {
     // Configure email transporter
@@ -50,6 +71,94 @@ export class CalendarIntegrationService {
         pass: process.env.EMAIL_PASSWORD || 'dummy_password'
       }
     });
+  }
+
+  async configureCustomerCalendar(config: CalendarConfig): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Validate configuration
+      if (!config.customerId || !config.provider) {
+        return { success: false, error: 'Missing required configuration fields' };
+      }
+
+      // Store customer configuration
+      this.customerConfigs.set(config.customerId, config);
+      
+      console.log(`Calendar configured for customer ${config.customerId} with provider: ${config.provider}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Calendar configuration failed:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getCustomerConfig(customerId: string): Promise<CalendarConfig | null> {
+    return this.customerConfigs.get(customerId) || null;
+  }
+
+  async getSlotsWithCustomerConfig(customerId: string, agentId: string, industry: string): Promise<CalendarSlot[]> {
+    const customerConfig = await this.getCustomerConfig(customerId);
+    
+    if (customerConfig) {
+      // Use customer-specific calendar integration
+      return await this.getSlotsFromCustomerProvider(customerConfig, agentId, industry);
+    } else {
+      // Fall back to default calendar slots
+      return await this.getAvailableSlots(agentId, industry);
+    }
+  }
+
+  private async getSlotsFromCustomerProvider(config: CalendarConfig, agentId: string, industry: string): Promise<CalendarSlot[]> {
+    const slots: CalendarSlot[] = [];
+    
+    try {
+      // Use customer's calendar provider
+      const dateRange = {
+        start: new Date(),
+        end: new Date(Date.now() + config.settings.maxAdvanceBooking * 24 * 60 * 60 * 1000)
+      };
+
+      // Generate slots based on customer's working hours
+      const workingHours = config.settings.workingHours;
+      
+      for (let date = new Date(dateRange.start); date <= dateRange.end; date.setDate(date.getDate() + 1)) {
+        const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][date.getDay()];
+        
+        if (!workingHours.days.includes(dayName)) {
+          continue;
+        }
+
+        const startHour = parseInt(workingHours.start.split(':')[0]);
+        const endHour = parseInt(workingHours.end.split(':')[0]);
+
+        for (let hour = startHour; hour < endHour; hour++) {
+          const slotTime = new Date(date);
+          slotTime.setHours(hour, 0, 0, 0);
+
+          // Check minimum advance booking time
+          const hoursFromNow = (slotTime.getTime() - Date.now()) / (1000 * 60 * 60);
+          if (hoursFromNow < config.settings.minAdvanceBooking) {
+            continue;
+          }
+
+          slots.push({
+            id: `${config.provider}_slot_${agentId}_${slotTime.getTime()}`,
+            datetime: slotTime.toISOString(),
+            duration: 30,
+            type: 'video',
+            available: true,
+            consultantName: await this.getConsultantName(agentId),
+            consultantEmail: config.consultantEmail
+          });
+        }
+      }
+
+      console.log(`Generated ${slots.length} slots using ${config.provider} provider`);
+      return slots;
+    } catch (error) {
+      console.error('Error getting slots from customer provider:', error);
+      // Fall back to default method
+      return await this.getAvailableSlots(agentId, industry);
+    }
   }
 
   async getAvailableSlots(agentId: string, industry: string, dateRange?: { start: Date; end: Date }): Promise<CalendarSlot[]> {

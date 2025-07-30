@@ -18,6 +18,7 @@ export interface PaymentInsight {
     scheduledAt: string;
     completedAt?: string;
     customerSatisfaction?: number;
+    status: 'scheduled' | 'completed' | 'missed' | 'cancelled' | 'rescheduled';
   };
   customerData: {
     name: string;
@@ -80,8 +81,70 @@ export interface InsightsReport {
   };
 }
 
+export interface AppointmentInsight {
+  appointmentId: string;
+  consultationId: string;
+  agentId: string;
+  customerId: string;
+  calendarProvider: string;
+  calendarEventId: string;
+  status: 'scheduled' | 'completed' | 'missed' | 'cancelled' | 'rescheduled';
+  scheduledAt: string;
+  actualStartTime?: string;
+  actualEndTime?: string;
+  duration: number;
+  customerData: {
+    name: string;
+    email: string;
+    phone: string;
+    timezone: string;
+  };
+  rescheduleHistory?: {
+    originalTime: string;
+    newTime: string;
+    reason?: string;
+    timestamp: string;
+  }[];
+  reminders: {
+    sent: boolean;
+    sentAt?: string;
+    type: 'email' | 'sms' | 'whatsapp';
+    status: 'delivered' | 'failed' | 'pending';
+  }[];
+  noShowReason?: string;
+  followUpActions?: string[];
+}
+
+export interface PurchaseInsight {
+  purchaseId: string;
+  customerId: string;
+  agentId: string;
+  platform: 'whatsapp' | 'instagram' | 'messenger' | 'web';
+  purchaseType: 'consultation' | 'subscription' | 'package' | 'addon';
+  items: {
+    id: string;
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+  }[];
+  totalAmount: number;
+  currency: string;
+  paymentMethod: string;
+  paymentStatus: 'pending' | 'completed' | 'failed' | 'refunded' | 'disputed';
+  timestamp: string;
+  conversionSource: string;
+  customerJourney: {
+    touchpoints: string[];
+    totalInteractions: number;
+    timeToConversion: number; // minutes
+  };
+}
+
 export class InsightsIntegrationService {
   private insights: PaymentInsight[] = [];
+  private appointmentInsights: AppointmentInsight[] = [];
+  private purchaseInsights: PurchaseInsight[] = [];
 
   async recordPaymentInsight(insight: PaymentInsight): Promise<void> {
     // Add timestamp if not provided
@@ -110,6 +173,123 @@ export class InsightsIntegrationService {
 
     // Update customer insights database
     await this.updateCustomerInsights(insight);
+  }
+
+  async recordAppointmentInsight(insight: AppointmentInsight): Promise<void> {
+    this.appointmentInsights.push(insight);
+    console.log(`Appointment insight recorded: ${insight.appointmentId} - ${insight.status}`);
+    
+    // Track appointment outcome
+    if (insight.status === 'missed') {
+      await this.handleMissedAppointment(insight);
+    } else if (insight.status === 'completed') {
+      await this.handleCompletedAppointment(insight);
+    }
+  }
+
+  async recordPurchaseInsight(insight: PurchaseInsight): Promise<void> {
+    this.purchaseInsights.push(insight);
+    console.log(`Purchase insight recorded: ${insight.purchaseId} - ₹${insight.totalAmount}`);
+    
+    // Update customer journey metrics
+    await this.updateCustomerJourney(insight.customerId, insight);
+  }
+
+  async getAppointmentMetrics(agentId: string, dateRange: { start: Date; end: Date }) {
+    const appointments = this.appointmentInsights.filter(
+      appointment => appointment.agentId === agentId &&
+      new Date(appointment.scheduledAt) >= dateRange.start &&
+      new Date(appointment.scheduledAt) <= dateRange.end
+    );
+
+    const totalAppointments = appointments.length;
+    const completedAppointments = appointments.filter(a => a.status === 'completed').length;
+    const missedAppointments = appointments.filter(a => a.status === 'missed').length;
+    const cancelledAppointments = appointments.filter(a => a.status === 'cancelled').length;
+    const rescheduledAppointments = appointments.filter(a => a.status === 'rescheduled').length;
+
+    return {
+      totalAppointments,
+      completedAppointments,
+      missedAppointments,
+      cancelledAppointments,
+      rescheduledAppointments,
+      completionRate: totalAppointments > 0 ? (completedAppointments / totalAppointments) * 100 : 0,
+      noShowRate: totalAppointments > 0 ? (missedAppointments / totalAppointments) * 100 : 0,
+      cancellationRate: totalAppointments > 0 ? (cancelledAppointments / totalAppointments) * 100 : 0
+    };
+  }
+
+  async getPurchaseMetrics(agentId: string, dateRange: { start: Date; end: Date }) {
+    const purchases = this.purchaseInsights.filter(
+      purchase => purchase.agentId === agentId &&
+      new Date(purchase.timestamp) >= dateRange.start &&
+      new Date(purchase.timestamp) <= dateRange.end
+    );
+
+    const totalPurchases = purchases.length;
+    const completedPurchases = purchases.filter(p => p.paymentStatus === 'completed').length;
+    const failedPurchases = purchases.filter(p => p.paymentStatus === 'failed').length;
+    const pendingPurchases = purchases.filter(p => p.paymentStatus === 'pending').length;
+    const refundedPurchases = purchases.filter(p => p.paymentStatus === 'refunded').length;
+
+    const totalRevenue = purchases
+      .filter(p => p.paymentStatus === 'completed')
+      .reduce((sum, p) => sum + p.totalAmount, 0);
+
+    const averageOrderValue = completedPurchases > 0 ? totalRevenue / completedPurchases : 0;
+
+    return {
+      totalPurchases,
+      completedPurchases,
+      failedPurchases,
+      pendingPurchases,
+      refundedPurchases,
+      totalRevenue,
+      averageOrderValue,
+      completionRate: totalPurchases > 0 ? (completedPurchases / totalPurchases) * 100 : 0,
+      failureRate: totalPurchases > 0 ? (failedPurchases / totalPurchases) * 100 : 0
+    };
+  }
+
+  private async handleMissedAppointment(appointment: AppointmentInsight): Promise<void> {
+    console.log(`Handling missed appointment: ${appointment.appointmentId}`);
+    
+    // Generate follow-up actions
+    const followUpActions = [
+      'Send automated follow-up message',
+      'Offer rescheduling options',
+      'Apply no-show fee if applicable',
+      'Update customer reliability score'
+    ];
+
+    appointment.followUpActions = followUpActions;
+    
+    // Track missed appointment reasons
+    if (!appointment.noShowReason) {
+      appointment.noShowReason = 'Customer did not attend scheduled appointment';
+    }
+  }
+
+  private async handleCompletedAppointment(appointment: AppointmentInsight): Promise<void> {
+    console.log(`Handling completed appointment: ${appointment.appointmentId}`);
+    
+    // Generate follow-up actions for completed appointments
+    const followUpActions = [
+      'Send satisfaction survey',
+      'Schedule follow-up if needed',
+      'Process payment if not pre-paid',
+      'Update customer success metrics'
+    ];
+
+    appointment.followUpActions = followUpActions;
+  }
+
+  private async updateCustomerJourney(customerId: string, purchase: PurchaseInsight): Promise<void> {
+    console.log(`Updating customer journey for: ${customerId}`);
+    
+    // In production, this would update customer journey analytics
+    // Track conversion touchpoints and customer lifecycle stage
   }
 
   async generateInsightsReport(agentId: string, startDate: Date, endDate: Date): Promise<InsightsReport> {
