@@ -86,21 +86,27 @@ export class ConversationalPaymentService {
   private detectIntent(message: string, context: ConversationContext): 'consultation' | 'information' | 'booking' | 'payment' {
     const lowerMessage = message.toLowerCase();
     
-    // Payment intent keywords
-    if (lowerMessage.includes('pay') || lowerMessage.includes('payment') || 
-        lowerMessage.includes('book') || lowerMessage.includes('appointment')) {
+    // Based on current conversation step first
+    if (context.currentStep === 'slot_selection' && (lowerMessage.includes('1') || lowerMessage.includes('2') || lowerMessage.includes('3'))) {
       return 'booking';
+    }
+    
+    if (context.currentStep === 'payment_method_selection') {
+      return 'booking';
+    }
+    
+    if (context.currentStep === 'awaiting_payment') {
+      return 'payment';
     }
     
     // Consultation intent keywords
     if (lowerMessage.includes('consultation') || lowerMessage.includes('doctor') || 
-        lowerMessage.includes('lawyer') || lowerMessage.includes('advisor')) {
+        lowerMessage.includes('lawyer') || lowerMessage.includes('advisor') ||
+        lowerMessage.includes('help') || lowerMessage.includes('need') ||
+        lowerMessage.includes('diabetes') || lowerMessage.includes('legal') ||
+        lowerMessage.includes('investment') || lowerMessage.includes('property') ||
+        lowerMessage.includes('software') || lowerMessage.includes('development')) {
       return 'consultation';
-    }
-    
-    // Based on current conversation step
-    if (context.currentStep === 'awaiting_payment') {
-      return 'payment';
     }
     
     return 'information';

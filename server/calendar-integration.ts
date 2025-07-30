@@ -362,7 +362,8 @@ Please prepare for the consultation and contact the customer if needed.
     return emails[agentId as keyof typeof emails] || 'consultant@agenthub.in';
   }
 
-  private formatDateTime(datetime: string): string {
+  private formatDateTime(datetime: string | undefined): string {
+    if (!datetime) return 'TBD';
     return new Date(datetime).toLocaleString('en-IN', {
       weekday: 'long',
       year: 'numeric',
