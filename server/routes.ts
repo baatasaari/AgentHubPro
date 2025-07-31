@@ -14,6 +14,7 @@ import { CustomerRAGService } from "./customer-rag";
 import { UniversalPaymentService } from "./universal-payment";
 import { AdminRAGService } from "./admin-rag";
 import { AdminPaymentService } from "./admin-payment";
+import { AdminPerCustomerRAGService } from "./admin-per-customer-rag";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize services
@@ -26,6 +27,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const universalPaymentService = new UniversalPaymentService();
   const adminRAGService = new AdminRAGService();
   const adminPaymentService = new AdminPaymentService();
+  const adminPerCustomerRAGService = new AdminPerCustomerRAGService();
 
   // Register payment routes
   registerPaymentRoutes(app);
@@ -978,6 +980,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: String(error) });
+    }
+  });
+
+  // Admin-controlled per-customer RAG configuration routes
+  app.post("/api/admin/per-customer-rag/configure", async (req, res) => {
+    try {
+      const { customerId, customerName, config } = req.body;
+      const adminUserId = "admin_001"; // In production, get from authentication
+      
+      const result = await adminPerCustomerRAGService.adminConfigureCustomerKnowledgeBase(customerId, customerName, adminUserId, config);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post("/api/admin/per-customer-rag/upload-files", async (req, res) => {
+    try {
+      const { customerId, files } = req.body;
+      const adminUserId = "admin_001"; // In production, get from authentication
+      
+      const result = await adminPerCustomerRAGService.adminUploadFilesForCustomer(customerId, adminUserId, files);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post("/api/admin/per-customer-rag/manage-faqs", async (req, res) => {
+    try {
+      const { customerId, faqs } = req.body;
+      const adminUserId = "admin_001"; // In production, get from authentication
+      
+      const result = await adminPerCustomerRAGService.adminManageFAQsForCustomer(customerId, adminUserId, faqs);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post("/api/admin/per-customer-rag/configure-website", async (req, res) => {
+    try {
+      const { customerId, pages } = req.body;
+      const adminUserId = "admin_001"; // In production, get from authentication
+      
+      const result = await adminPerCustomerRAGService.adminConfigureWebsitePagesForCustomer(customerId, adminUserId, pages);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get("/api/admin/per-customer-rag/customer/:customerId/status", async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      const status = await adminPerCustomerRAGService.getCustomerKnowledgeBaseStatus(customerId);
+      res.json(status);
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get("/api/admin/per-customer-rag/overview", async (req, res) => {
+    try {
+      const overview = await adminPerCustomerRAGService.getAdminCustomersOverview();
+      res.json(overview);
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.delete("/api/admin/per-customer-rag/customer/:customerId/documents", async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      const { documentIds } = req.body;
+      const adminUserId = "admin_001"; // In production, get from authentication
+      
+      const result = await adminPerCustomerRAGService.adminDeleteCustomerDocuments(customerId, adminUserId, documentIds);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Customer RAG query route (customers can only query, not configure)
+  app.post("/api/per-customer-rag/query", async (req, res) => {
+    try {
+      const { customerId, agentId, platform, query } = req.body;
+      
+      const result = await adminPerCustomerRAGService.queryCustomerKnowledgeBase(customerId, agentId, platform, query);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
     }
   });
 
