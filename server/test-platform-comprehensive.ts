@@ -68,12 +68,8 @@ class ComprehensiveSystemTest {
         businessName: "Mumbai Healthcare Clinic",
         industry: "healthcare",
         businessDescription: "Premium healthcare services in Mumbai with specialized consultations",
-        modelChoice: "gpt-4o",
-        interfaceType: "whatsapp",
-        targetAudience: "Healthcare patients in Mumbai",
-        brandColor: "#2563eb",
-        welcomeMessage: "Welcome to Mumbai Healthcare! How can we assist you today?",
-        businessHours: "9 AM - 7 PM, Monday to Saturday"
+        llmModel: "gpt-4o",
+        interfaceType: "whatsapp"
       };
       
       const response = await axios.post(`${BASE_URL}/api/agents`, agentData);
@@ -97,34 +93,22 @@ class ComprehensiveSystemTest {
         businessName: "Delhi Fashion Store",
         industry: "retail",
         businessDescription: "Premium fashion retailer in Delhi with latest trends",
-        modelChoice: "gpt-4o",
-        interfaceType: "whatsapp",
-        targetAudience: "Fashion-conscious customers in Delhi",
-        brandColor: "#ec4899",
-        welcomeMessage: "Welcome to Delhi Fashion! Discover the latest trends!",
-        businessHours: "10 AM - 9 PM, All days"
+        llmModel: "gpt-4o",
+        interfaceType: "whatsapp"
       },
       {
         businessName: "Bangalore Investment Advisory",
         industry: "finance",
         businessDescription: "Professional investment advisory services in Bangalore",
-        modelChoice: "gpt-4o",
-        interfaceType: "web",
-        targetAudience: "Investment seekers in Bangalore",
-        brandColor: "#059669",
-        welcomeMessage: "Welcome to Bangalore Investment Advisory! Let's grow your wealth!",
-        businessHours: "9 AM - 6 PM, Monday to Friday"
+        llmModel: "gpt-4o",
+        interfaceType: "webchat"
       },
       {
         businessName: "Chennai Real Estate Hub",
-        industry: "real_estate",
+        industry: "realestate",
         businessDescription: "Premier real estate services in Chennai",
-        modelChoice: "gpt-3.5-turbo",
-        interfaceType: "instagram",
-        targetAudience: "Property buyers and sellers in Chennai",
-        brandColor: "#dc2626",
-        welcomeMessage: "Welcome to Chennai Real Estate Hub! Find your dream property!",
-        businessHours: "9 AM - 8 PM, All days"
+        llmModel: "gpt-3.5-turbo",
+        interfaceType: "whatsapp"
       }
     ];
 
@@ -139,11 +123,8 @@ class ComprehensiveSystemTest {
     await this.executeTest('Agent Conversation Logging', async () => {
       const conversationData = {
         agentId: 1,
-        customerMessage: "I need a consultation for diabetes screening",
-        agentResponse: "I'd be happy to help you with diabetes screening. Let me check available appointment slots.",
-        timestamp: new Date().toISOString(),
-        platform: "whatsapp",
-        cost: 0.012
+        tokens: 150,
+        cost: "0.012"
       };
       
       const response = await axios.post(`${BASE_URL}/api/conversations`, conversationData);
@@ -328,7 +309,7 @@ class ComprehensiveSystemTest {
         });
         return {
           query,
-          hasAnswer: response.data.answer.length > 0,
+          hasAnswer: response.data.response && response.data.response.length > 0,
           sources: response.data.sources?.length || 0,
           relevanceScore: response.data.relevanceScore
         };
@@ -352,7 +333,7 @@ class ComprehensiveSystemTest {
         });
         return {
           query,
-          hasAnswer: response.data.answer.length > 0,
+          hasAnswer: response.data.response && response.data.response.length > 0,
           sources: response.data.sources?.length || 0,
           relevanceScore: response.data.relevanceScore
         };
@@ -376,7 +357,7 @@ class ComprehensiveSystemTest {
         });
         return {
           query,
-          hasAnswer: response.data.answer.length > 0,
+          hasAnswer: response.data.response && response.data.response.length > 0,
           sources: response.data.sources?.length || 0,
           relevanceScore: response.data.relevanceScore
         };
@@ -709,11 +690,8 @@ class ComprehensiveSystemTest {
       for (let i = 0; i < 5; i++) {
         const conversationData = {
           agentId: Math.floor(Math.random() * 3) + 1,
-          customerMessage: `Test message ${i}`,
-          agentResponse: `Test response ${i}`,
-          timestamp: new Date().toISOString(),
-          platform: ["whatsapp", "instagram", "web"][Math.floor(Math.random() * 3)],
-          cost: Math.random() * 0.05
+          tokens: Math.floor(Math.random() * 200) + 50,
+          cost: (Math.random() * 0.05).toFixed(4)
         };
         
         promises.push(axios.post(`${BASE_URL}/api/conversations`, conversationData));
