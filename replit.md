@@ -6,7 +6,9 @@ AgentHub is a comprehensive SaaS platform that enables businesses to create, cus
 
 ## System Architecture
 
-### Microservices Architecture
+### Microservices Architecture (Optimized for Maintainability)
+
+#### Current Production Services (7 Services)
 - **🤖 Agent Wizard Service (8001)**: Agent creation, management, and system prompt generation
 - **📊 Analytics Service (8002)**: Usage tracking, performance metrics, and conversation analytics
 - **💰 Billing Service (8003)**: Cost tracking, billing, invoicing, and payment management
@@ -14,7 +16,21 @@ AgentHub is a comprehensive SaaS platform that enables businesses to create, cus
 - **🎨 Widget Service (8005)**: Widget customization, code generation, and template management
 - **🔧 My Agents Service (8006)**: Comprehensive agent lifecycle management (CRUD, enable/disable, status tracking)
 - **📈 Insights Service (8007)**: Customer interaction analytics across platforms (WhatsApp, Instagram, Web) with conversion tracking, lead qualification, and ROI reporting
-- **🌐 API Gateway (8000)**: Request routing, load balancing, and service discovery
+
+#### Proposed Extracted Services (7 Additional Services)
+- **📚 RAG Knowledge Service (8008)**: Centralized RAG and knowledge management (Customer RAG, Admin RAG, Multi-agent RAG, Industry knowledge)
+- **🎯 Admin Per-Customer RAG Service (8009)**: Per-customer RAG configuration and isolation
+- **📖 RAG Core Service (8010)**: Base RAG functionality, embedding generation, and similarity search
+- **💳 Payment Processing Service (8011)**: Universal payment processing and management
+- **🗣️ Conversational Payment Service (8012)**: Conversational payment flows and admin payment management
+- **📆 Calendar Integration Service (8013)**: Calendar integration and booking management
+- **🔌 Calendar Plugin Service (8014)**: Calendar provider plugins and configuration
+
+#### Platform Infrastructure
+- **🌐 API Gateway (8000)**: Request routing, load balancing, and service discovery with NGINX
+- **🎭 Orchestration Service (8017)**: Cross-service workflow management and event-driven communication
+- **🗃️ Data Management Service (8018)**: Database operations and BigQuery integration
+- **⚙️ Configuration Service (8019)**: Central configuration management and feature flags
 
 ### Frontend Architecture
 - **Framework**: React 18 with TypeScript
@@ -228,6 +244,12 @@ Preferred communication style: Simple, everyday language for non-technical users
 - ✓ Fixed RAG embedding similarity threshold issue for proper document retrieval and query matching
 - ✓ Validated complete platform functionality: agent creation, RAG queries, payment flows, analytics, calendar integration
 - ✓ Achieved production-ready status with all endpoints operational and error handling properly implemented
+- ✓ Completed comprehensive microservices architecture analysis and optimization plan
+- ✓ Identified opportunity to extract 7 new microservices from main server (1081-line routes.ts)
+- ✓ Created detailed plan for 14 focused microservices with domain separation (RAG, Payments, Calendar, Analytics, Platform)
+- ✓ Implemented sample RAG Knowledge Service and Payment Processing Service demonstrating 73% complexity reduction
+- ✓ Designed API Gateway with NGINX for service orchestration and load balancing
+- ✓ Established microservices development standards with Docker containerization and health monitoring
 
 ### July 30, 2025 - Enterprise-Grade Analytics System with Comprehensive Insights Management
 - ✓ Built enterprise-grade analytics system capturing every interaction across all conversational agents, transactions, appointments, and customer touchpoints

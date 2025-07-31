@@ -1,0 +1,151 @@
+version: '3.8'
+
+services:
+  # === Existing Microservices ===
+  
+  analytics-service:
+    build: ./analytics-service
+    ports:
+      - "8002:8002"
+    environment:
+      - PORT=8002
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  billing-service:
+    build: ./billing-service
+    ports:
+      - "8003:8003"
+    environment:
+      - PORT=8003
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  dashboard-service:
+    build: ./dashboard-service
+    ports:
+      - "8004:8004"
+    environment:
+      - PORT=8004
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  widget-service:
+    build: ./widget-service
+    ports:
+      - "8005:8005"
+    environment:
+      - PORT=8005
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  my-agents-service:
+    build: ./my-agents-service
+    ports:
+      - "8006:8006"
+    environment:
+      - PORT=8006
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  insights-service:
+    build: ./insights-service
+    ports:
+      - "8007:8007"
+    environment:
+      - PORT=8007
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  agent-wizard-service:
+    build: ./agent-wizard-service
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # === New Extracted Microservices ===
+
+  rag-knowledge-service:
+    build: ./rag-knowledge-service
+    ports:
+      - "8008:8008"
+    environment:
+      - PORT=8008
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8008/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - analytics-service
+
+  payment-processing-service:
+    build: ./payment-processing-service
+    ports:
+      - "8011:8011"
+    environment:
+      - PORT=8011
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8011/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - analytics-service
+
+  # === Service Discovery and Monitoring ===
+
+  api-gateway:
+    image: nginx:alpine
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx-gateway.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - analytics-service
+      - billing-service
+      - dashboard-service
+      - widget-service
+      - my-agents-service
+      - insights-service
+      - agent-wizard-service
+      - rag-knowledge-service
+      - payment-processing-service
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  agenthub:
+    driver: bridge
+
+volumes:
+  microservices_data:
