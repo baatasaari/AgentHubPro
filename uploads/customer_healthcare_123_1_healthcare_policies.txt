@@ -1,0 +1,20 @@
+
+            Healthcare Clinic Policies
+
+            Consultation Hours: Monday-Friday 9 AM to 7 PM, Saturday 10 AM to 4 PM
+            Consultation Fees: General consultation ₹500, Specialist consultation ₹1200, Emergency consultation ₹2000
+            
+            Insurance Accepted: Ayushman Bharat, CGHS, ESIC, Private insurance (Cashless available)
+            
+            Services Offered:
+            - General medicine and family healthcare
+            - Preventive health checkups and wellness programs
+            - Vaccination services for children and adults
+            - Minor surgical procedures and wound care
+            - Ayurvedic consultations and treatments
+            - Telemedicine consultations via WhatsApp video
+            
+            Appointment Booking: Call +91-9876543210 or WhatsApp for instant booking
+            Emergency Services: 24/7 emergency care available
+            Payment Methods: Cash, UPI (PhonePe, Google Pay, Paytm), Credit/Debit cards
+          

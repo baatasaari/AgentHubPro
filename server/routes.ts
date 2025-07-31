@@ -10,6 +10,8 @@ import { CalendarIntegrationService, BookingRequest, CalendarConfig } from "./ca
 import { InsightsIntegrationService, PaymentInsight, AppointmentInsight, PurchaseInsight } from "./insights-integration";
 import { CalendarPluginManager } from "./calendar-plugins";
 import { EnterpriseAnalyticsService, ConversationInsight, AgentPerformanceInsight, CustomerInsight, SystemPerformanceInsight, enterpriseAnalytics } from "./enterprise-analytics";
+import { CustomerRAGService } from "./customer-rag";
+import { UniversalPaymentService } from "./universal-payment";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize services
@@ -18,6 +20,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const insightsService = new InsightsIntegrationService();
   const calendarPluginManager = new CalendarPluginManager();
   const analyticsService = new EnterpriseAnalyticsService();
+  const customerRAGService = new CustomerRAGService();
+  const universalPaymentService = new UniversalPaymentService();
 
   // Register payment routes
   registerPaymentRoutes(app);
@@ -701,6 +705,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clearInterval(interval);
         res.end();
       });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  // Customer-Configurable RAG Routes
+  app.post("/api/rag/configure", async (req, res) => {
+    try {
+      const { customerId, agentId, config } = req.body;
+      const result = await customerRAGService.configureKnowledgeBase(customerId, agentId, config);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.post("/api/rag/upload", async (req, res) => {
+    try {
+      const { customerId, agentId, files } = req.body;
+      const result = await customerRAGService.uploadFiles(customerId, agentId, files);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.post("/api/rag/faq", async (req, res) => {
+    try {
+      const { customerId, agentId, faqs } = req.body;
+      const result = await customerRAGService.addFAQEntries(customerId, agentId, faqs);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.post("/api/rag/database", async (req, res) => {
+    try {
+      const { customerId, agentId, connection } = req.body;
+      const result = await customerRAGService.connectDatabase(customerId, agentId, connection);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.post("/api/rag/customer-query", async (req, res) => {
+    try {
+      const { customerId, agentId, query } = req.body;
+      const result = await customerRAGService.queryKnowledgeBase(customerId, agentId, query);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.get("/api/rag/status/:customerId/:agentId", async (req, res) => {
+    try {
+      const { customerId, agentId } = req.params;
+      const status = await customerRAGService.getKnowledgeBaseStatus(customerId, agentId);
+      res.json(status);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.delete("/api/rag/documents/:customerId/:agentId", async (req, res) => {
+    try {
+      const { customerId, agentId } = req.params;
+      const { documentIds } = req.body;
+      const result = await customerRAGService.deleteDocuments(customerId, agentId, documentIds);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  // Universal Payment Routes (Available for All Agents)
+  app.post("/api/payment/conversation", async (req, res) => {
+    try {
+      const { context, message } = req.body;
+      const result = await universalPaymentService.processConversation(context, message);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.post("/api/payment/generate-link", async (req, res) => {
+    try {
+      const { context, amount, description } = req.body;
+      const result = await universalPaymentService.generatePaymentLink(context, amount, description);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.post("/api/payment/instructions", async (req, res) => {
+    try {
+      const { platform, paymentLink, amount, description } = req.body;
+      const instructions = universalPaymentService.createPaymentInstructions(platform, paymentLink, amount, description);
+      res.json({ instructions });
     } catch (error) {
       res.status(500).json({ error: String(error) });
     }

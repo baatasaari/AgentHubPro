@@ -1,465 +1,595 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Upload, MessageSquare, Database, Search, FileText, Bot, Zap } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Upload, FileText, Database, MessageSquare, Trash2, Settings } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
-const RAGManagement = () => {
-  const [selectedAgent, setSelectedAgent] = useState<string>('');
-  const [chatQuery, setChatQuery] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isAddingDocument, setIsAddingDocument] = useState(false);
-  const [documentForm, setDocumentForm] = useState({
-    title: '',
-    content: '',
-    doc_type: 'knowledge_base',
-    source: '',
-    industry: '',
-    metadata: {}
+interface FAQEntry {
+  question: string;
+  answer: string;
+  category?: string;
+  tags?: string[];
+}
+
+interface FileUpload {
+  filename: string;
+  content: string;
+  mimeType: string;
+}
+
+interface DatabaseConnection {
+  type: 'mysql' | 'postgresql' | 'mongodb';
+  host: string;
+  database: string;
+  tables?: string[];
+  query?: string;
+}
+
+interface KnowledgeBaseStatus {
+  configured: boolean;
+  totalDocuments: number;
+  sourceBreakdown: Record<string, number>;
+  configuration?: {
+    enabledSources: string[];
+    embeddingModel: string;
+    maxDocuments: number;
+    autoUpdate: boolean;
+  };
+}
+
+export default function RAGManagement() {
+  const [customerId] = useState("customer_123"); // In production, get from auth
+  const [agentId, setAgentId] = useState("1");
+  const [status, setStatus] = useState<KnowledgeBaseStatus | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [testQuery, setTestQuery] = useState("");
+  const [testResponse, setTestResponse] = useState<any>(null);
+  
+  // FAQ Management
+  const [faqs, setFaqs] = useState<FAQEntry[]>([{ question: "", answer: "", category: "" }]);
+  
+  // File Upload
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  
+  // Database Connection
+  const [dbConnection, setDbConnection] = useState<DatabaseConnection>({
+    type: 'postgresql',
+    host: '',
+    database: '',
+    tables: []
   });
 
-  const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Fetch agents
-  const { data: agents = [] } = useQuery({
-    queryKey: ['/api/agents'],
-  });
-
-  // Fetch RAG stats
-  const { data: ragStats } = useQuery({
-    queryKey: ['/api/rag/stats'],
-  });
-
-  // Fetch RAG health
-  const { data: ragHealth } = useQuery({
-    queryKey: ['/api/rag/health'],
-  });
-
-  // Chat with agent using RAG
-  const chatMutation = useMutation({
-    mutationFn: async ({ agentId, query }: { agentId: string; query: string }) => {
-      const response = await fetch(`/api/agents/${agentId}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({ title: 'Chat successful', description: 'RAG-enhanced response generated' });
-    },
-  });
-
-  // Search RAG documents
-  const searchMutation = useMutation({
-    mutationFn: async ({ query, agentId }: { query: string; agentId?: string }) => {
-      const response = await fetch('/api/rag/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, agent_id: agentId, top_k: 5 }),
-      });
-      return response.json();
-    },
-  });
-
-  // Add document
-  const addDocumentMutation = useMutation({
-    mutationFn: async (documentData: any) => {
-      const response = await fetch('/api/rag/documents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(documentData),
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({ title: 'Document added', description: 'Knowledge base updated successfully' });
-      queryClient.invalidateQueries({ queryKey: ['/api/rag/stats'] });
-      setIsAddingDocument(false);
-      setDocumentForm({
-        title: '',
-        content: '',
-        doc_type: 'knowledge_base',
-        source: '',
-        industry: '',
-        metadata: {}
-      });
-    },
-  });
-
-  const handleChat = () => {
-    if (!selectedAgent || !chatQuery.trim()) {
-      toast({ title: 'Error', description: 'Please select an agent and enter a query', variant: 'destructive' });
-      return;
+  useEffect(() => {
+    if (agentId) {
+      loadKnowledgeBaseStatus();
     }
-    chatMutation.mutate({ agentId: selectedAgent, query: chatQuery });
+  }, [agentId]);
+
+  const loadKnowledgeBaseStatus = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/rag/status/${customerId}/${agentId}`);
+      const data = await response.json();
+      setStatus(data);
+    } catch (error) {
+      console.error('Failed to load knowledge base status:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSearch = () => {
-    if (!searchQuery.trim()) {
-      toast({ title: 'Error', description: 'Please enter a search query', variant: 'destructive' });
-      return;
+  const configureKnowledgeBase = async () => {
+    try {
+      setLoading(true);
+      const config = {
+        enabledSources: ['file', 'faq', 'database', 'manual'],
+        embeddingModel: 'text-embedding-3-small',
+        maxDocuments: 1000,
+        autoUpdate: true
+      };
+
+      const response = await apiRequest("POST", "/api/rag/configure", {
+        customerId,
+        agentId,
+        config
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Knowledge Base Configured",
+          description: "Your knowledge base is ready for content upload."
+        });
+        await loadKnowledgeBaseStatus();
+      }
+    } catch (error) {
+      toast({
+        title: "Configuration Failed",
+        description: "Failed to configure knowledge base.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-    searchMutation.mutate({ query: searchQuery, agentId: selectedAgent });
   };
 
-  const handleAddDocument = () => {
-    if (!documentForm.title || !documentForm.content || !documentForm.source) {
-      toast({ title: 'Error', description: 'Please fill in all required fields', variant: 'destructive' });
-      return;
+  const uploadFAQs = async () => {
+    try {
+      setLoading(true);
+      const validFaqs = faqs.filter(faq => faq.question.trim() && faq.answer.trim());
+      
+      if (validFaqs.length === 0) {
+        toast({
+          title: "No Valid FAQs",
+          description: "Please add at least one complete FAQ entry.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const response = await apiRequest("POST", "/api/rag/faq", {
+        customerId,
+        agentId,
+        faqs: validFaqs
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "FAQs Added Successfully",
+          description: `Added ${result.addedEntries} FAQ entries to knowledge base.`
+        });
+        setFaqs([{ question: "", answer: "", category: "" }]);
+        await loadKnowledgeBaseStatus();
+      }
+    } catch (error) {
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload FAQ entries.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-    
-    addDocumentMutation.mutate({
-      ...documentForm,
-      agent_id: selectedAgent || undefined,
-    });
+  };
+
+  const handleFileUpload = async () => {
+    try {
+      setLoading(true);
+      
+      if (uploadFiles.length === 0) {
+        toast({
+          title: "No Files Selected",
+          description: "Please select files to upload.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const fileData = await Promise.all(
+        uploadFiles.map(async (file) => ({
+          filename: file.name,
+          content: await file.text(),
+          mimeType: file.type
+        }))
+      );
+
+      const response = await apiRequest("POST", "/api/rag/upload", {
+        customerId,
+        agentId,
+        files: fileData
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "Files Uploaded Successfully",
+          description: `Processed ${result.processedFiles} files. Total documents: ${result.totalDocuments}`
+        });
+        setUploadFiles([]);
+        await loadKnowledgeBaseStatus();
+      }
+    } catch (error) {
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload files.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const connectDatabase = async () => {
+    try {
+      setLoading(true);
+      
+      if (!dbConnection.host || !dbConnection.database) {
+        toast({
+          title: "Invalid Connection",
+          description: "Please provide host and database name.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const response = await apiRequest("POST", "/api/rag/database", {
+        customerId,
+        agentId,
+        connection: dbConnection
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "Database Connected",
+          description: `Imported ${result.importedRecords} records. Total documents: ${result.totalDocuments}`
+        });
+        await loadKnowledgeBaseStatus();
+      }
+    } catch (error) {
+      toast({
+        title: "Connection Failed",
+        description: "Failed to connect to database.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const testKnowledgeBase = async () => {
+    try {
+      setLoading(true);
+      
+      if (!testQuery.trim()) {
+        toast({
+          title: "Empty Query",
+          description: "Please enter a test query.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const response = await apiRequest("POST", "/api/rag/customer-query", {
+        customerId,
+        agentId,
+        query: testQuery
+      });
+
+      const result = await response.json();
+      setTestResponse(result);
+      
+      toast({
+        title: "Query Processed",
+        description: `Found ${result.sources.length} relevant sources with ${(result.relevanceScore * 100).toFixed(1)}% relevance.`
+      });
+    } catch (error) {
+      toast({
+        title: "Query Failed",
+        description: "Failed to process test query.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addFAQRow = () => {
+    setFaqs([...faqs, { question: "", answer: "", category: "" }]);
+  };
+
+  const updateFAQ = (index: number, field: keyof FAQEntry, value: string) => {
+    const updated = [...faqs];
+    updated[index] = { ...updated[index], [field]: value };
+    setFaqs(updated);
+  };
+
+  const removeFAQ = (index: number) => {
+    setFaqs(faqs.filter((_, i) => i !== index));
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="container mx-auto p-6">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold">RAG Knowledge Management</h1>
-          <p className="text-muted-foreground">
-            Manage knowledge bases and test RAG-enhanced conversations
-          </p>
+          <h1 className="text-3xl font-bold">RAG Management</h1>
+          <p className="text-muted-foreground">Configure customer-specific knowledge bases with file uploads and embeddings</p>
         </div>
-        <div className="flex items-center space-x-2">
-          {(ragHealth as any)?.status === 'healthy' && (
-            <Badge variant="default" className="bg-green-100 text-green-800">
-              <Zap className="h-3 w-3 mr-1" />
-              RAG Active
-            </Badge>
-          )}
-          {(ragHealth as any)?.openai_available && (
-            <Badge variant="outline">
-              <Bot className="h-3 w-3 mr-1" />
-              OpenAI Connected
-            </Badge>
-          )}
+        
+        <div className="flex items-center gap-4">
+          <Label htmlFor="agentId">Agent ID:</Label>
+          <Input
+            id="agentId"
+            value={agentId}
+            onChange={(e) => setAgentId(e.target.value)}
+            className="w-32"
+            placeholder="1"
+          />
         </div>
       </div>
 
-      {/* RAG Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center">
-              <Database className="h-4 w-4 mr-2" />
-              Documents
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{(ragStats as any)?.total_documents || 0}</div>
-            <p className="text-xs text-muted-foreground">Total knowledge documents</p>
-          </CardContent>
-        </Card>
+      {/* Knowledge Base Status */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Knowledge Base Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {status ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>Status</Label>
+                <Badge variant={status.configured ? "default" : "secondary"} className="ml-2">
+                  {status.configured ? "Configured" : "Not Configured"}
+                </Badge>
+              </div>
+              <div>
+                <Label>Total Documents</Label>
+                <p className="text-2xl font-bold">{status.totalDocuments}</p>
+              </div>
+              <div>
+                <Label>Sources</Label>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {Object.entries(status.sourceBreakdown).map(([source, count]) => (
+                    <Badge key={source} variant="outline">
+                      {source}: {count}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Button onClick={configureKnowledgeBase} disabled={loading}>
+                <Settings className="h-4 w-4 mr-2" />
+                Configure Knowledge Base
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center">
-              <FileText className="h-4 w-4 mr-2" />
-              Chunks
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{(ragStats as any)?.total_chunks || 0}</div>
-            <p className="text-xs text-muted-foreground">Searchable text chunks</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Embedding Model</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm font-mono">{(ragStats as any)?.embedding_model || 'N/A'}</div>
-            <p className="text-xs text-muted-foreground">Vector embeddings</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Completion Model</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm font-mono">{(ragStats as any)?.completion_model || 'N/A'}</div>
-            <p className="text-xs text-muted-foreground">Response generation</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="chat" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="chat">
+      <Tabs defaultValue="faq" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="faq">
             <MessageSquare className="h-4 w-4 mr-2" />
-            Test Chat
+            FAQ Management
           </TabsTrigger>
-          <TabsTrigger value="search">
-            <Search className="h-4 w-4 mr-2" />
-            Search Knowledge
-          </TabsTrigger>
-          <TabsTrigger value="documents">
+          <TabsTrigger value="files">
             <FileText className="h-4 w-4 mr-2" />
-            Manage Documents
+            File Upload
+          </TabsTrigger>
+          <TabsTrigger value="database">
+            <Database className="h-4 w-4 mr-2" />
+            Database Connect
+          </TabsTrigger>
+          <TabsTrigger value="test">
+            <Upload className="h-4 w-4 mr-2" />
+            Test & Query
           </TabsTrigger>
         </TabsList>
 
-        {/* Chat Tab */}
-        <TabsContent value="chat">
+        <TabsContent value="faq">
           <Card>
             <CardHeader>
-              <CardTitle>Test RAG-Enhanced Chat</CardTitle>
-              <CardDescription>
-                Chat with agents using their knowledge base for enhanced responses
-              </CardDescription>
+              <CardTitle>FAQ Management</CardTitle>
+              <CardDescription>Add frequently asked questions and answers to your knowledge base</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="agent-select">Select Agent</Label>
-                <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose an agent to chat with" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(agents as any[]).map((agent: any) => (
-                      <SelectItem key={agent.id} value={agent.id.toString()}>
-                        {agent.businessName} ({agent.industry})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="chat-query">Your Question</Label>
-                <Textarea
-                  id="chat-query"
-                  placeholder="Ask something about the agent's business or services..."
-                  value={chatQuery}
-                  onChange={(e) => setChatQuery(e.target.value)}
-                  className="min-h-[100px]"
-                />
-              </div>
-
-              <Button onClick={handleChat} disabled={chatMutation.isPending}>
-                <MessageSquare className="h-4 w-4 mr-2" />
-                {chatMutation.isPending ? 'Generating...' : 'Send Message'}
-              </Button>
-
-              {chatMutation.data && (
-                <div className="mt-4 space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm flex items-center justify-between">
-                        Agent Response
-                        {chatMutation.data.sources?.length > 0 && (
-                          <Badge variant="secondary">
-                            RAG Enhanced ({chatMutation.data.sources.length} sources)
-                          </Badge>
-                        )}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm">{chatMutation.data.response}</p>
-                      
-                      {chatMutation.data.sources?.length > 0 && (
-                        <div className="mt-4">
-                          <h4 className="text-sm font-semibold mb-2">Sources:</h4>
-                          {chatMutation.data.sources.map((source: any, idx: number) => (
-                            <div key={idx} className="text-xs p-2 bg-muted rounded">
-                              <div className="font-medium">{source.title}</div>
-                              <div className="text-muted-foreground">{source.content_preview}</div>
-                              <div className="mt-1">
-                                <Badge variant="outline" className="text-xs">
-                                  Relevance: {(source.relevance_score * 100).toFixed(1)}%
-                                </Badge>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+              {faqs.map((faq, index) => (
+                <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 border rounded-lg">
+                  <div className="md:col-span-5">
+                    <Label>Question</Label>
+                    <Input
+                      value={faq.question}
+                      onChange={(e) => updateFAQ(index, 'question', e.target.value)}
+                      placeholder="What are your business hours?"
+                    />
+                  </div>
+                  <div className="md:col-span-5">
+                    <Label>Answer</Label>
+                    <Textarea
+                      value={faq.answer}
+                      onChange={(e) => updateFAQ(index, 'answer', e.target.value)}
+                      placeholder="We are open Monday to Friday 9 AM to 6 PM..."
+                      rows={3}
+                    />
+                  </div>
+                  <div className="md:col-span-1">
+                    <Label>Category</Label>
+                    <Input
+                      value={faq.category}
+                      onChange={(e) => updateFAQ(index, 'category', e.target.value)}
+                      placeholder="General"
+                    />
+                  </div>
+                  <div className="md:col-span-1 flex items-end">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => removeFAQ(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              )}
+              ))}
+              
+              <div className="flex gap-2">
+                <Button onClick={addFAQRow} variant="outline">
+                  Add FAQ Row
+                </Button>
+                <Button onClick={uploadFAQs} disabled={loading}>
+                  Upload FAQs
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Search Tab */}
-        <TabsContent value="search">
+        <TabsContent value="files">
           <Card>
             <CardHeader>
-              <CardTitle>Search Knowledge Base</CardTitle>
-              <CardDescription>
-                Search through all documents to find relevant information
-              </CardDescription>
+              <CardTitle>File Upload</CardTitle>
+              <CardDescription>Upload documents, PDFs, text files, or other content to your knowledge base</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="search-query">Search Query</Label>
+                <Label htmlFor="fileInput">Select Files</Label>
                 <Input
-                  id="search-query"
-                  placeholder="Enter keywords to search for..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  id="fileInput"
+                  type="file"
+                  multiple
+                  onChange={(e) => setUploadFiles(Array.from(e.target.files || []))}
+                  accept=".txt,.md,.json,.csv,.pdf,.doc,.docx"
+                  className="mt-1"
+                />
+                <p className="text-sm text-muted-foreground mt-1">
+                  Supported formats: TXT, MD, JSON, CSV, PDF, DOC, DOCX
+                </p>
+              </div>
+              
+              {uploadFiles.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Selected Files:</Label>
+                  {uploadFiles.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 border rounded">
+                      <span>{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setUploadFiles(uploadFiles.filter((_, i) => i !== index))}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              <Button onClick={handleFileUpload} disabled={loading || uploadFiles.length === 0}>
+                Upload Files to Knowledge Base
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="database">
+          <Card>
+            <CardHeader>
+              <CardTitle>Database Connection</CardTitle>
+              <CardDescription>Connect to your existing database to import knowledge</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Database Type</Label>
+                  <select
+                    value={dbConnection.type}
+                    onChange={(e) => setDbConnection({...dbConnection, type: e.target.value as any})}
+                    className="w-full p-2 border rounded"
+                  >
+                    <option value="postgresql">PostgreSQL</option>
+                    <option value="mysql">MySQL</option>
+                    <option value="mongodb">MongoDB</option>
+                  </select>
+                </div>
+                <div>
+                  <Label>Host</Label>
+                  <Input
+                    value={dbConnection.host}
+                    onChange={(e) => setDbConnection({...dbConnection, host: e.target.value})}
+                    placeholder="localhost:5432"
+                  />
+                </div>
+                <div>
+                  <Label>Database Name</Label>
+                  <Input
+                    value={dbConnection.database}
+                    onChange={(e) => setDbConnection({...dbConnection, database: e.target.value})}
+                    placeholder="my_business_db"
+                  />
+                </div>
+                <div>
+                  <Label>Tables (Optional)</Label>
+                  <Input
+                    value={dbConnection.tables?.join(', ') || ''}
+                    onChange={(e) => setDbConnection({...dbConnection, tables: e.target.value.split(',').map(t => t.trim())})}
+                    placeholder="products, customers, orders"
+                  />
+                </div>
+              </div>
+              
+              <Button onClick={connectDatabase} disabled={loading}>
+                Connect & Import Database
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="test">
+          <Card>
+            <CardHeader>
+              <CardTitle>Test Knowledge Base</CardTitle>
+              <CardDescription>Query your knowledge base to test responses and relevance</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Test Query</Label>
+                <Textarea
+                  value={testQuery}
+                  onChange={(e) => setTestQuery(e.target.value)}
+                  placeholder="What are your business hours? Do you offer consultations?"
+                  rows={3}
                 />
               </div>
-
-              <Button onClick={handleSearch} disabled={searchMutation.isPending}>
-                <Search className="h-4 w-4 mr-2" />
-                {searchMutation.isPending ? 'Searching...' : 'Search'}
+              
+              <Button onClick={testKnowledgeBase} disabled={loading || !testQuery.trim()}>
+                Test Query
               </Button>
-
-              {searchMutation.data && (
-                <div className="mt-4">
-                  <h3 className="text-sm font-semibold mb-2">
-                    Search Results ({searchMutation.data.total_results})
-                  </h3>
-                  {searchMutation.data.results.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No relevant documents found.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {searchMutation.data.results.map((result: any, idx: number) => (
-                        <Card key={idx}>
-                          <CardContent className="p-4">
-                            <div className="flex justify-between items-start mb-2">
-                              <h4 className="text-sm font-medium">{result.document_title}</h4>
-                              <Badge variant="outline">
-                                {(result.relevance_score * 100).toFixed(1)}% match
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground mb-2">{result.content}</p>
-                            <div className="text-xs text-muted-foreground">
-                              Source: {result.document_source}
-                              {result.metadata?.industry && ` • Industry: ${result.metadata.industry}`}
-                            </div>
-                          </CardContent>
-                        </Card>
+              
+              {testResponse && (
+                <div className="space-y-4 mt-6">
+                  <div className="p-4 border rounded-lg bg-muted/50">
+                    <Label className="text-sm font-medium">Response:</Label>
+                    <p className="mt-2">{testResponse.response}</p>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium">
+                      Sources ({testResponse.sources.length}) - Relevance: {(testResponse.relevanceScore * 100).toFixed(1)}%
+                    </Label>
+                    <div className="space-y-2 mt-2">
+                      {testResponse.sources.map((source: any, index: number) => (
+                        <div key={index} className="p-3 border rounded text-sm">
+                          <div className="flex justify-between items-start mb-2">
+                            <Badge variant="outline">{source.metadata.source}</Badge>
+                            <Badge variant="secondary">{(source.relevanceScore * 100).toFixed(1)}%</Badge>
+                          </div>
+                          <p className="text-muted-foreground">{source.content}</p>
+                        </div>
                       ))}
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Documents Tab */}
-        <TabsContent value="documents">
-          <Card>
-            <CardHeader>
-              <CardTitle>Knowledge Base Management</CardTitle>
-              <CardDescription>
-                Add documents to enhance your agents' knowledge
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Dialog open={isAddingDocument} onOpenChange={setIsAddingDocument}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Add Document
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Add Knowledge Document</DialogTitle>
-                    <DialogDescription>
-                      Add a new document to enhance agent responses
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="doc-title">Title *</Label>
-                        <Input
-                          id="doc-title"
-                          placeholder="Document title"
-                          value={documentForm.title}
-                          onChange={(e) => setDocumentForm(prev => ({ ...prev, title: e.target.value }))}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="doc-source">Source *</Label>
-                        <Input
-                          id="doc-source"
-                          placeholder="Document source"
-                          value={documentForm.source}
-                          onChange={(e) => setDocumentForm(prev => ({ ...prev, source: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="doc-type">Document Type</Label>
-                        <Select
-                          value={documentForm.doc_type}
-                          onValueChange={(value) => setDocumentForm(prev => ({ ...prev, doc_type: value }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="knowledge_base">Knowledge Base</SelectItem>
-                            <SelectItem value="faq">FAQ</SelectItem>
-                            <SelectItem value="company_docs">Company Docs</SelectItem>
-                            <SelectItem value="webpage">Webpage</SelectItem>
-                            <SelectItem value="text">Text</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="doc-industry">Industry</Label>
-                        <Input
-                          id="doc-industry"
-                          placeholder="e.g., healthcare, retail"
-                          value={documentForm.industry}
-                          onChange={(e) => setDocumentForm(prev => ({ ...prev, industry: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="doc-content">Content *</Label>
-                      <Textarea
-                        id="doc-content"
-                        placeholder="Enter the document content..."
-                        value={documentForm.content}
-                        onChange={(e) => setDocumentForm(prev => ({ ...prev, content: e.target.value }))}
-                        className="min-h-[200px]"
-                      />
-                    </div>
-                  </div>
-
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsAddingDocument(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleAddDocument} disabled={addDocumentMutation.isPending}>
-                      {addDocumentMutation.isPending ? 'Adding...' : 'Add Document'}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
     </div>
   );
-};
-
-export default RAGManagement;
+}
