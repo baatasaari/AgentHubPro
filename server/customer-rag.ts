@@ -12,7 +12,8 @@ import OpenAI from 'openai';
 interface EmbeddingDocument {
   id: string;
   customerId: string;
-  agentId: string;
+  agentIds: string[]; // Multiple agents can use this document
+  platforms: ('whatsapp' | 'instagram' | 'messenger' | 'webchat' | 'sms')[]; // Available on multiple platforms
   content: string;
   embedding: number[];
   metadata: {
@@ -20,19 +21,22 @@ interface EmbeddingDocument {
     source: 'file' | 'database' | 'faq' | 'manual';
     category?: string;
     tags?: string[];
+    priority: 'high' | 'medium' | 'low';
     lastUpdated: string;
   };
 }
 
 interface CustomerKnowledgeBase {
   customerId: string;
-  agentId: string;
+  agentIds: string[]; // Support multiple agents
+  platforms: ('whatsapp' | 'instagram' | 'messenger' | 'webchat' | 'sms')[]; // Available platforms
   documents: EmbeddingDocument[];
   configuration: {
     enabledSources: ('file' | 'database' | 'faq' | 'manual')[];
     embeddingModel: string;
     maxDocuments: number;
     autoUpdate: boolean;
+    globalKnowledge: boolean; // If true, applies to all customer's agents
   };
 }
 
