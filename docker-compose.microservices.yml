@@ -1,0 +1,527 @@
+version: '3.8'
+
+services:
+  # API Gateway (Main Application)
+  api-gateway:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=${DATABASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - agent-management
+      - conversation-management
+      - usage-analytics
+      - widget-generation
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Knowledge Management Domain (6 Services)
+  document-processing:
+    build:
+      context: ./microservices/document-processing-service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  embedding-generation:
+    build:
+      context: ./microservices/embedding-generation-service
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      - PORT=8002
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  similarity-search:
+    build:
+      context: ./microservices/similarity-search-service
+      dockerfile: Dockerfile
+    ports:
+      - "8010:8010"
+    environment:
+      - PORT=8010
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8010/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  knowledge-base:
+    build:
+      context: ./microservices/knowledge-base-service
+      dockerfile: Dockerfile
+    ports:
+      - "8011:8011"
+    environment:
+      - PORT=8011
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8011/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  faq-management:
+    build:
+      context: ./microservices/faq-management-service
+      dockerfile: Dockerfile
+    ports:
+      - "8013:8013"
+    environment:
+      - PORT=8013
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8013/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  rag-query:
+    build:
+      context: ./microservices/rag-query-service
+      dockerfile: Dockerfile
+    ports:
+      - "8111:8111"
+    environment:
+      - PORT=8111
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8111/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Payment Processing Domain (4 Services)
+  payment-intent:
+    build:
+      context: ./microservices/payment-intent-service
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8003"
+    environment:
+      - PORT=8003
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  payment-link:
+    build:
+      context: ./microservices/payment-link-service
+      dockerfile: Dockerfile
+    ports:
+      - "8015:8015"
+    environment:
+      - PORT=8015
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8015/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  metrics-collection:
+    build:
+      context: ./microservices/metrics-collection-service
+      dockerfile: Dockerfile
+    ports:
+      - "8023:8023"
+    environment:
+      - PORT=8023
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8023/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  billing-calculation:
+    build:
+      context: ./microservices/billing-calculation-service
+      dockerfile: Dockerfile
+    ports:
+      - "8119:8119"
+    environment:
+      - PORT=8119
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8119/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Calendar & Booking Domain (4 Services)
+  slot-management:
+    build:
+      context: ./microservices/slot-management-service
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8004"
+    environment:
+      - PORT=8004
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  booking-management:
+    build:
+      context: ./microservices/booking-management-service
+      dockerfile: Dockerfile
+    ports:
+      - "8021:8021"
+    environment:
+      - PORT=8021
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8021/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  calendar-provider:
+    build:
+      context: ./microservices/calendar-provider-service
+      dockerfile: Dockerfile
+    ports:
+      - "8120:8120"
+    environment:
+      - PORT=8120
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8120/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  notification:
+    build:
+      context: ./microservices/notification-service
+      dockerfile: Dockerfile
+    ports:
+      - "8005:8005"
+    environment:
+      - PORT=8005
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Core Business Logic Domain (4 Services)
+  agent-management:
+    build:
+      context: ./microservices/agent-management-service
+      dockerfile: Dockerfile
+    ports:
+      - "8101:8101"
+    environment:
+      - PORT=8101
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8101/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  conversation-management:
+    build:
+      context: ./microservices/conversation-management-service
+      dockerfile: Dockerfile
+    ports:
+      - "8102:8102"
+    environment:
+      - PORT=8102
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8102/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  widget-generation:
+    build:
+      context: ./microservices/widget-generation-service
+      dockerfile: Dockerfile
+    ports:
+      - "8104:8104"
+    environment:
+      - PORT=8104
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8104/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  usage-analytics:
+    build:
+      context: ./microservices/usage-analytics-service
+      dockerfile: Dockerfile
+    ports:
+      - "8103:8103"
+    environment:
+      - PORT=8103
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8103/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Analytics & Insights Domain (4 Services)
+  analytics-calculation:
+    build:
+      context: ./microservices/analytics-calculation-service
+      dockerfile: Dockerfile
+    ports:
+      - "8107:8107"
+    environment:
+      - PORT=8107
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8107/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  insights-generation:
+    build:
+      context: ./microservices/insights-generation-service
+      dockerfile: Dockerfile
+    ports:
+      - "8125:8125"
+    environment:
+      - PORT=8125
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8125/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  data-storage:
+    build:
+      context: ./microservices/data-storage-service
+      dockerfile: Dockerfile
+    ports:
+      - "8128:8128"
+    environment:
+      - PORT=8128
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8128/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  system-health:
+    build:
+      context: ./microservices/system-health-service
+      dockerfile: Dockerfile
+    ports:
+      - "8106:8106"
+    environment:
+      - PORT=8106
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8106/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Platform Infrastructure Domain (7 Services)
+  configuration:
+    build:
+      context: ./microservices/configuration-service
+      dockerfile: Dockerfile
+    ports:
+      - "8030:8030"
+    environment:
+      - PORT=8030
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8030/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  response-generation:
+    build:
+      context: ./microservices/response-generation-service
+      dockerfile: Dockerfile
+    ports:
+      - "8012:8012"
+    environment:
+      - PORT=8012
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8012/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  service-discovery:
+    build:
+      context: ./microservices/service-discovery-service
+      dockerfile: Dockerfile
+    ports:
+      - "8027:8027"
+    environment:
+      - PORT=8027
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8027/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  authentication:
+    build:
+      context: ./microservices/authentication-service
+      dockerfile: Dockerfile
+    ports:
+      - "8031:8031"
+    environment:
+      - PORT=8031
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8031/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  database-operations:
+    build:
+      context: ./microservices/database-operations-service
+      dockerfile: Dockerfile
+    ports:
+      - "8028:8028"
+    environment:
+      - PORT=8028
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8028/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  logging:
+    build:
+      context: ./microservices/logging-service
+      dockerfile: Dockerfile
+    ports:
+      - "8033:8033"
+    environment:
+      - PORT=8033
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8033/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  industry-configuration:
+    build:
+      context: ./microservices/industry-configuration-service
+      dockerfile: Dockerfile
+    ports:
+      - "8105:8105"
+    environment:
+      - PORT=8105
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8105/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Communication & Processing Services
+  conversation-processing:
+    build:
+      context: ./microservices/conversation-processing-service
+      dockerfile: Dockerfile
+    ports:
+      - "8126:8126"
+    environment:
+      - PORT=8126
+    networks:
+      - agenthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8126/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  agenthub-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  microservices_data:
+    driver: local
