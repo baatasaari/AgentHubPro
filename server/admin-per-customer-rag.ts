@@ -804,7 +804,7 @@ export class AdminPerCustomerRAGService {
     return scored
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
-      .filter(item => item.score > 0.7)
+      .filter(item => item.score > 0.3) // Lowered threshold for better matching
       .map(item => item.document);
   }
 
