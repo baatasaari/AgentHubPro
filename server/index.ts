@@ -1,94 +1,35 @@
-import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+// Minimal server for frontend serving - API calls routed to microservices
+import express from "express";
+import { createServer } from "http";
+import { createProxyMiddleware } from "http-proxy-middleware";
 
 const app = express();
 
-// Enhanced security and performance middleware
-app.use(express.json({ limit: '10mb' })); // Set explicit body size limit
-app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+// Serve static frontend files
+app.use(express.static('dist'));
 
-// Trust proxy for production deployments behind reverse proxies
-if (process.env.NODE_ENV === 'production') {
-  app.set('trust proxy', 1);
-}
+// Proxy API requests to microservices API Gateway
+app.use('/api', createProxyMiddleware({
+  target: 'http://localhost:8000', // API Gateway port
+  changeOrigin: true,
+  onError: (err, req, res) => {
+    console.log('Microservices not available - starting Docker services...');
+    res.status(503).json({ 
+      error: 'Microservices starting', 
+      message: 'Please wait while services are initializing' 
+    });
+  }
+}));
 
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
-    }
-  });
-
-  next();
+// Fallback to index.html for SPA routing
+app.get('*', (req, res) => {
+  res.sendFile('index.html', { root: 'dist' });
 });
 
-(async () => {
-  const server = await registerRoutes(app);
+const server = createServer(app);
+const port = process.env.PORT || 5000;
 
-  // Enhanced error handling middleware
-  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    // Log errors for debugging
-    if (status >= 500) {
-      console.error(`[Error] ${req.method} ${req.path}:`, err);
-    }
-
-    // Send detailed error info in development only
-    const errorResponse: any = { message };
-    if (process.env.NODE_ENV === 'development') {
-      errorResponse.stack = err.stack;
-      errorResponse.details = err.details;
-    }
-
-    res.status(status).json(errorResponse);
-    
-    // Don't throw in production to prevent crashes
-    if (process.env.NODE_ENV !== 'production') {
-      throw err;
-    }
-  });
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
-
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
-})();
+server.listen(port, "0.0.0.0", () => {
+  console.log(`Frontend server running on port ${port}`);
+  console.log('API requests will be proxied to microservices');
+});
