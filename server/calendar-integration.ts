@@ -85,7 +85,7 @@ export class CalendarIntegrationService {
       
       console.log(`Calendar configured for customer ${config.customerId} with provider: ${config.provider}`);
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Calendar configuration failed:', error);
       return { success: false, error: error.message };
     }
