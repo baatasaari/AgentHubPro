@@ -13,6 +13,7 @@ export default function Navigation() {
     { path: "/payment-demo", label: "Payment Demo", icon: Smartphone },
     { path: "/conversational-payment", label: "Conversational Payments", icon: MessageCircle },
     { path: "/rag", label: "RAG Knowledge", icon: Database },
+    { path: "/admin", label: "Admin Dashboard", icon: Settings },
     { path: "/analytics", label: "Analytics", icon: BarChart3 },
     { path: "/billing", label: "Billing", icon: CreditCard },
   ];

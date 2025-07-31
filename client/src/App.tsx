@@ -8,7 +8,8 @@ import Agents from "@/pages/agents";
 import MyAgents from "@/pages/my-agents";
 import Billing from "@/pages/billing";
 import Analytics from "@/pages/analytics";
-import RAGManagement from "@/pages/rag-management"; 
+import RAGManagement from "@/pages/rag-management";
+import AdminDashboard from "@/pages/admin-dashboard"; 
 import ConsultationBooking from "@/pages/consultation-booking";
 import PaymentDemo from "@/pages/payment-demo";
 import ConversationalPaymentDemo from "@/pages/conversational-payment-demo";
@@ -26,6 +27,7 @@ function Router() {
         <Route path="/analytics" component={Analytics} />
         <Route path="/billing" component={Billing} />
         <Route path="/rag" component={RAGManagement} />
+        <Route path="/admin" component={AdminDashboard} />
         <Route path="/consultation" component={ConsultationBooking} />
         <Route path="/payment-demo" component={PaymentDemo} />
         <Route path="/conversational-payment" component={ConversationalPaymentDemo} />

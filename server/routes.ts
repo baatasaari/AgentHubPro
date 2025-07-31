@@ -12,6 +12,8 @@ import { CalendarPluginManager } from "./calendar-plugins";
 import { EnterpriseAnalyticsService, ConversationInsight, AgentPerformanceInsight, CustomerInsight, SystemPerformanceInsight, enterpriseAnalytics } from "./enterprise-analytics";
 import { CustomerRAGService } from "./customer-rag";
 import { UniversalPaymentService } from "./universal-payment";
+import { AdminRAGService } from "./admin-rag";
+import { AdminPaymentService } from "./admin-payment";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize services
@@ -22,6 +24,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const analyticsService = new EnterpriseAnalyticsService();
   const customerRAGService = new CustomerRAGService();
   const universalPaymentService = new UniversalPaymentService();
+  const adminRAGService = new AdminRAGService();
+  const adminPaymentService = new AdminPaymentService();
 
   // Register payment routes
   registerPaymentRoutes(app);
@@ -808,6 +812,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { platform, paymentLink, amount, description } = req.body;
       const instructions = universalPaymentService.createPaymentInstructions(platform, paymentLink, amount, description);
       res.json({ instructions });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  // Admin RAG Routes
+  app.post("/api/admin/rag/configure", async (req, res) => {
+    try {
+      const { agentId, adminUserId, config } = req.body;
+      const result = await adminRAGService.configureAgentKnowledgeBase(agentId, adminUserId, config);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.post("/api/admin/rag/upload", async (req, res) => {
+    try {
+      const { agentId, adminUserId, files } = req.body;
+      const result = await adminRAGService.adminUploadFiles(agentId, adminUserId, files);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.post("/api/admin/rag/faq", async (req, res) => {
+    try {
+      const { adminUserId, faqs } = req.body;
+      const result = await adminRAGService.adminManageFAQBadges(adminUserId, faqs);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.post("/api/admin/rag/website", async (req, res) => {
+    try {
+      const { agentId, adminUserId, pages } = req.body;
+      const result = await adminRAGService.adminConfigureWebsitePages(agentId, adminUserId, pages);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.get("/api/admin/rag/status/:agentId", async (req, res) => {
+    try {
+      const { agentId } = req.params;
+      const status = await adminRAGService.getAgentKnowledgeBaseStatus(agentId);
+      res.json(status);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.get("/api/admin/rag/overview", async (req, res) => {
+    try {
+      const overview = await adminRAGService.getAdminOverview();
+      res.json(overview);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.delete("/api/admin/rag/documents/:agentId", async (req, res) => {
+    try {
+      const { agentId } = req.params;
+      const { adminUserId, documentIds } = req.body;
+      const result = await adminRAGService.adminDeleteDocuments(agentId, adminUserId, documentIds);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  // Admin Payment Routes
+  app.post("/api/admin/payment/configure", async (req, res) => {
+    try {
+      const { agentId, adminUserId, config } = req.body;
+      const result = await adminPaymentService.adminConfigurePayment(agentId, adminUserId, config);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.post("/api/admin/payment/template", async (req, res) => {
+    try {
+      const { agentId, adminUserId, industry, customizations } = req.body;
+      const result = await adminPaymentService.adminCreateFromTemplate(agentId, adminUserId, industry, customizations);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.get("/api/admin/payment/templates", async (req, res) => {
+    try {
+      const templates = adminPaymentService.getIndustryTemplates();
+      res.json(templates);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.get("/api/admin/payment/overview", async (req, res) => {
+    try {
+      const overview = await adminPaymentService.getAdminPaymentOverview();
+      res.json(overview);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.get("/api/admin/payment/config/:agentId", async (req, res) => {
+    try {
+      const { agentId } = req.params;
+      const config = await adminPaymentService.getPaymentConfiguration(agentId);
+      res.json(config);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.patch("/api/admin/payment/toggle/:agentId", async (req, res) => {
+    try {
+      const { agentId } = req.params;
+      const { adminUserId, isActive } = req.body;
+      const result = await adminPaymentService.adminTogglePaymentStatus(agentId, adminUserId, isActive);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.delete("/api/admin/payment/config/:agentId", async (req, res) => {
+    try {
+      const { agentId } = req.params;
+      const { adminUserId } = req.body;
+      const result = await adminPaymentService.adminDeletePaymentConfiguration(agentId, adminUserId);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  // Agent queries using admin-configured knowledge base
+  app.post("/api/agent/query", async (req, res) => {
+    try {
+      const { agentId, query } = req.body;
+      const result = await adminRAGService.queryAgentKnowledgeBase(agentId, query);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  // Payment processing using admin-configured settings
+  app.post("/api/agent/payment", async (req, res) => {
+    try {
+      const paymentRequest = req.body;
+      const result = await adminPaymentService.processPaymentRequest(paymentRequest);
+      res.json(result);
     } catch (error) {
       res.status(500).json({ error: String(error) });
     }

@@ -1,0 +1,31 @@
+
+            Healthcare Services and Pricing
+
+            Our clinic offers comprehensive healthcare services with transparent pricing:
+
+            General Consultation: ₹500 (includes basic examination and prescription)
+            Specialist Consultation: ₹1200 (cardiologist, dermatologist, neurologist)
+            Emergency Consultation: ₹2000 (24/7 emergency care available)
+
+            Diagnostic Services:
+            - Blood tests: ₹300-₹800 depending on complexity
+            - X-ray: ₹500 per scan
+            - ECG: ₹300
+            - Ultrasound: ₹800-₹1500
+
+            Insurance Accepted:
+            - Ayushman Bharat (100% cashless)
+            - CGHS (direct billing available)
+            - Private insurance (cashless facility for major insurers)
+
+            Online Services:
+            - Telemedicine consultations via WhatsApp video: ₹400
+            - Prescription refills: ₹200
+            - Report consultation: ₹300
+
+            Booking Methods:
+            - Call: +91-9876543210
+            - WhatsApp: +91-9876543210
+            - Online portal: www.healthclinic.com/book
+            - Walk-in appointments available (limited slots)
+          
