@@ -12,7 +12,7 @@ const app = express();
 app.use(express.json());
 
 // Serve static frontend files
-const distPath = path.join(__dirname, '../dist');
+const distPath = path.join(__dirname, '../dist/public');
 app.use(express.static(distPath));
 
 // Simulated microservices responses (when Docker services not available)
@@ -134,7 +134,17 @@ app.get('/health', (req, res) => {
 
 // Fallback to index.html for SPA routing
 app.get('*', (req, res) => {
-  res.sendFile(path.join(distPath, 'index.html'));
+  const indexPath = path.join(distPath, 'index.html');
+  if (require('fs').existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).json({ 
+      error: 'Frontend not built', 
+      message: 'Run npm run build to generate frontend files',
+      microservices_api: 'Available at /api/*',
+      health_check: 'Available at /health'
+    });
+  }
 });
 
 const server = createServer(app);
