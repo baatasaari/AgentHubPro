@@ -216,11 +216,23 @@ export default function AgentForm({ onFormChange, onAgentCreated }: AgentFormPro
                   </FormItem>
                 )}
               />
-            </div>
+                  <div className="flex justify-end pt-6">
+                    <Button type="button" onClick={nextStep}>
+                      Next: AI Configuration <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
 
-            {/* AI Model Configuration */}
-            <div className="space-y-4 pt-6 border-t border-border">
-              <h3 className="text-lg font-medium text-slate-900">AI Model Configuration</h3>
+            {/* Step 2: AI Configuration */}
+            {step === 2 && (
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-slate-900 flex items-center gap-2">
+                    <Database className="h-5 w-5" />
+                    AI Model & Interface Configuration
+                  </h3>
               
               <FormField
                 control={form.control}
@@ -259,59 +271,58 @@ export default function AgentForm({ onFormChange, onAgentCreated }: AgentFormPro
               )}
             </div>
 
-            {/* Interface Selection */}
-            <div className="space-y-4 pt-6 border-t border-border">
-              <h3 className="text-lg font-medium text-slate-900">Interface Type</h3>
-              
-              <FormField
-                control={form.control}
-                name="interfaceType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                      >
-                        {INTERFACE_TYPES.map((interfaceType) => (
-                          <div key={interfaceType.value}>
-                            <RadioGroupItem
-                              value={interfaceType.value}
-                              id={interfaceType.value}
-                              className="peer sr-only"
-                            />
-                            <Label
-                              htmlFor={interfaceType.value}
-                              className="flex items-center space-x-3 p-4 border-2 border-border rounded-lg cursor-pointer peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:border-slate-300 transition-colors"
-                            >
-                              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                                {interfaceType.value === "webchat" ? (
-                                  <MessageSquare className="w-5 h-5 text-primary" />
-                                ) : (
-                                  <Smartphone className="w-5 h-5 text-green-600" />
-                                )}
+                  <FormField
+                    control={form.control}
+                    name="interfaceType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Interface Type</FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                          >
+                            {INTERFACE_TYPES.map((interfaceType) => (
+                              <div key={interfaceType.value}>
+                                <RadioGroupItem
+                                  value={interfaceType.value}
+                                  id={interfaceType.value}
+                                  className="peer sr-only"
+                                />
+                                <Label
+                                  htmlFor={interfaceType.value}
+                                  className="flex items-center space-x-3 p-4 border-2 border-border rounded-lg cursor-pointer peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:border-slate-300 transition-colors"
+                                >
+                                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                                    {interfaceType.value === "webchat" ? (
+                                      <MessageSquare className="w-5 h-5 text-primary" />
+                                    ) : (
+                                      <Smartphone className="w-5 h-5 text-green-600" />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <h4 className="font-medium text-slate-900">{interfaceType.label}</h4>
+                                    <p className="text-sm text-muted-foreground">{interfaceType.description}</p>
+                                  </div>
+                                </Label>
                               </div>
-                              <div>
-                                <h4 className="font-medium text-slate-900">{interfaceType.label}</h4>
-                                <p className="text-sm text-muted-foreground">{interfaceType.description}</p>
-                              </div>
-                            </Label>
-                          </div>
-                        ))}
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-                  <div className="flex justify-end pt-6">
-                    <Button type="button" onClick={nextStep}>
-                      Next: AI Configuration <ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
-                  </div>
+                <div className="flex justify-between pt-6">
+                  <Button type="button" variant="outline" onClick={prevStep}>
+                    <ChevronLeft className="h-4 w-4 mr-1" /> Back
+                  </Button>
+                  <Button type="button" onClick={nextStep}>
+                    Next: Knowledge Base <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
                 </div>
               </div>
             )}
