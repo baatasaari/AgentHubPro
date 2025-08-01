@@ -90,7 +90,16 @@ app.use('/api', async (req, res, next) => {
       ...req.body,
       id: Date.now(),
       status: 'draft',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      // Ensure RAG fields are included
+      ragEnabled: req.body.ragEnabled || 'false',
+      ragKnowledgeBase: req.body.ragKnowledgeBase || '',
+      ragDocuments: req.body.ragDocuments || '[]',
+      ragQueryMode: req.body.ragQueryMode || 'hybrid',
+      ragChunkSize: req.body.ragChunkSize || 1000,
+      ragOverlap: req.body.ragOverlap || 200,
+      ragMaxResults: req.body.ragMaxResults || 5,
+      ragConfidenceThreshold: req.body.ragConfidenceThreshold || '0.7'
     };
     return res.status(201).json(newAgent);
   }

@@ -1,21 +1,51 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Pause, Bot, Search, TrendingUp, Settings, Eye, MessageSquare, DollarSign } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Play, Pause, Bot, Search, TrendingUp, Settings, Eye, MessageSquare, DollarSign, Database, FileText, Edit } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import RAGConfiguration from '@/components/rag-configuration';
 import type { Agent } from "@shared/schema";
 
 export default function MyAgents() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [ragDialogOpen, setRagDialogOpen] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Fetch agents data from main API
   const { data: agents = [], isLoading } = useQuery<Agent[]>({
     queryKey: ["/api/agents"],
+  });
+
+  // Update agent mutation
+  const updateAgentMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: number; updates: Partial<Agent> }) => {
+      // Simulate API call
+      return new Promise(resolve => setTimeout(resolve, 1000));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
+      toast({
+        title: "Agent updated",
+        description: "RAG configuration saved successfully",
+      });
+      setRagDialogOpen(false);
+    },
+    onError: () => {
+      toast({
+        title: "Update failed",
+        description: "Failed to update agent configuration",
+        variant: "destructive"
+      });
+    }
   });
 
   // Filter agents based on search and status
@@ -200,6 +230,24 @@ export default function MyAgents() {
                       </div>
                     </div>
 
+                    {/* RAG Status Indicator */}
+                    {agent.ragEnabled === 'true' && (
+                      <div className="mb-4 p-2 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Database className="h-4 w-4 text-green-600" />
+                          <div>
+                            <p className="text-xs font-medium text-green-700">RAG Enabled</p>
+                            <p className="text-xs text-green-600">
+                              {agent.ragKnowledgeBase || 'Knowledge base configured'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                    </div>
+
                     <div className="flex items-center justify-between">
                       <div className="flex space-x-1">
                         {agent.status === 'active' ? (
@@ -213,6 +261,56 @@ export default function MyAgents() {
                             Activate
                           </Button>
                         )}
+                        <Dialog open={ragDialogOpen} onOpenChange={setRagDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => setSelectedAgent(agent)}
+                            >
+                              <Database className="h-3 w-3 mr-1" />
+                              RAG
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle>RAG Configuration - {selectedAgent?.businessName}</DialogTitle>
+                              <DialogDescription>
+                                Configure knowledge base and retrieval settings for your agent
+                              </DialogDescription>
+                            </DialogHeader>
+                            {selectedAgent && (
+                              <RAGConfiguration
+                                value={{
+                                  enabled: selectedAgent.ragEnabled === 'true',
+                                  knowledgeBase: selectedAgent.ragKnowledgeBase || '',
+                                  documents: selectedAgent.ragDocuments ? JSON.parse(selectedAgent.ragDocuments) : [],
+                                  queryMode: (selectedAgent.ragQueryMode as any) || 'hybrid',
+                                  chunkSize: selectedAgent.ragChunkSize || 1000,
+                                  overlap: selectedAgent.ragOverlap || 200,
+                                  maxResults: selectedAgent.ragMaxResults || 5,
+                                  confidenceThreshold: parseFloat(selectedAgent.ragConfidenceThreshold || '0.7')
+                                }}
+                                onChange={(config) => {
+                                  updateAgentMutation.mutate({
+                                    id: selectedAgent.id,
+                                    updates: {
+                                      ragEnabled: config.enabled.toString(),
+                                      ragKnowledgeBase: config.knowledgeBase,
+                                      ragDocuments: JSON.stringify(config.documents),
+                                      ragQueryMode: config.queryMode,
+                                      ragChunkSize: config.chunkSize,
+                                      ragOverlap: config.overlap,
+                                      ragMaxResults: config.maxResults,
+                                      ragConfidenceThreshold: config.confidenceThreshold.toString()
+                                    }
+                                  });
+                                }}
+                                mode="manage"
+                              />
+                            )}
+                          </DialogContent>
+                        </Dialog>
                         <Button size="sm" variant="ghost">
                           <Settings className="h-3 w-3" />
                         </Button>

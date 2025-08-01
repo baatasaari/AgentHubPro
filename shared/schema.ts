@@ -11,6 +11,15 @@ export const agents = pgTable("agents", {
   llmModel: text("llm_model").notNull(),
   interfaceType: text("interface_type").notNull(), // 'webchat' or 'whatsapp'
   status: text("status").notNull().default('draft'), // 'draft', 'active', 'paused'
+  // RAG Configuration
+  ragEnabled: text("rag_enabled").default('false'),
+  ragKnowledgeBase: text("rag_knowledge_base").default(''),
+  ragDocuments: text("rag_documents").default('[]'), // JSON array as text
+  ragQueryMode: text("rag_query_mode").default('hybrid'), // semantic, keyword, hybrid
+  ragChunkSize: integer("rag_chunk_size").default(1000),
+  ragOverlap: integer("rag_overlap").default(200),
+  ragMaxResults: integer("rag_max_results").default(5),
+  ragConfidenceThreshold: text("rag_confidence_threshold").default('0.7'),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
