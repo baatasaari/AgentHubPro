@@ -4,6 +4,7 @@ import { createServer } from "http";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import path from "path";
 import { fileURLToPath } from 'url';
+import fs from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -110,8 +111,9 @@ app.use('/api', async (req, res, next) => {
     });
   }
   
-  if (simulatedResponses[`/api${endpoint}`]) {
-    return res.json(simulatedResponses[`/api${endpoint}`]);
+  const apiKey = `/api${endpoint}` as keyof typeof simulatedResponses;
+  if (simulatedResponses[apiKey]) {
+    return res.json(simulatedResponses[apiKey]);
   }
   
   // Default response for unmapped endpoints
@@ -135,7 +137,7 @@ app.get('/health', (req, res) => {
 // Fallback to index.html for SPA routing
 app.get('*', (req, res) => {
   const indexPath = path.join(distPath, 'index.html');
-  if (require('fs').existsSync(indexPath)) {
+  if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
     res.status(404).json({ 
@@ -148,7 +150,7 @@ app.get('*', (req, res) => {
 });
 
 const server = createServer(app);
-const port = process.env.PORT || 5000;
+const port = Number(process.env.PORT) || 5000;
 
 server.listen(port, "0.0.0.0", () => {
   console.log(`🚀 AgentHub Microservices Platform running on port ${port}`);

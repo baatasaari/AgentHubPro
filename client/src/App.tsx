@@ -14,6 +14,8 @@ import AdminDashboard from "@/pages/admin-dashboard";
 import ConsultationBooking from "@/pages/consultation-booking";
 import PaymentDemo from "@/pages/payment-demo";
 import ConversationalPaymentDemo from "@/pages/conversational-payment-demo";
+import Conversations from "@/pages/conversations";
+import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -30,6 +32,8 @@ function Router() {
         <Route path="/consultation-booking" component={ConsultationBooking} />
         <Route path="/payment-demo" component={PaymentDemo} />
         <Route path="/conversational-payment-demo" component={ConversationalPaymentDemo} />
+        <Route path="/conversations" component={Conversations} />
+        <Route path="/settings" component={Settings} />
         <Route component={NotFound} />
       </Switch>
     </MainLayout>
