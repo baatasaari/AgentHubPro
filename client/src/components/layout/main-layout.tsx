@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sidebar } from '@/components/ui/sidebar';
+import { CollapsibleSidebar, SidebarProvider, useSidebar } from '@/components/ui/collapsible-sidebar';
 import { cn } from '@/lib/utils';
 
 interface MainLayoutProps {
@@ -7,14 +7,19 @@ interface MainLayoutProps {
   className?: string;
 }
 
-export function MainLayout({ children, className }: MainLayoutProps) {
+function MainLayoutContent({ children, className }: MainLayoutProps) {
+  const { isCollapsed } = useSidebar();
+  
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Sidebar */}
-      <Sidebar />
+      <CollapsibleSidebar />
       
       {/* Main content */}
-      <div className="flex flex-1 flex-col ml-64">
+      <div className={cn(
+        "flex flex-1 flex-col transition-all duration-300",
+        isCollapsed ? "ml-16" : "ml-64"
+      )}>
         {/* Header */}
         <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
           <div className="px-6 py-4">
@@ -38,6 +43,16 @@ export function MainLayout({ children, className }: MainLayoutProps) {
         </main>
       </div>
     </div>
+  );
+}
+
+export function MainLayout({ children, className }: MainLayoutProps) {
+  return (
+    <SidebarProvider>
+      <MainLayoutContent className={className}>
+        {children}
+      </MainLayoutContent>
+    </SidebarProvider>
   );
 }
 
