@@ -20,7 +20,7 @@ app.use(express.static(distPath));
 app.post('/api/email/send-report', async (req, res) => {
   try {
     console.log('Email report endpoint called');
-    const { workingEmailService } = await import('./working-email-service.js');
+    const { gmailEmailService } = await import('./gmail-email-service.js');
     const { toEmail, reportData } = req.body;
     
     if (!toEmail || !reportData) {
@@ -28,7 +28,7 @@ app.post('/api/email/send-report', async (req, res) => {
     }
 
     console.log(`Sending report to: ${toEmail}`);
-    const result = await workingEmailService.sendExecutiveReport(toEmail, reportData);
+    const result = await gmailEmailService.sendExecutiveReport(toEmail, reportData);
     
     if (result.success) {
       console.log(`Report sent successfully to ${toEmail}`);
