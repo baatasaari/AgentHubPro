@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Executive Analytics Report - TechBazar Electronics</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8fafc;
+            color: #2d3748;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .metric-card {
+            background: #f7fafc;
+            border-left: 4px solid #4299e1;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2b6cb0;
+            margin-bottom: 5px;
+        }
+        .metric-label {
+            font-size: 12px;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .platform-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .platform-table th {
+            background: #4a5568;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        .platform-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .platform-table tr:hover {
+            background: #f7fafc;
+        }
+        .section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border-left: 4px solid #48bb78;
+        }
+        .section h3 {
+            margin: 0 0 15px 0;
+            color: #2d3748;
+            font-size: 18px;
+        }
+        .insights-list {
+            list-style: none;
+            padding: 0;
+        }
+        .insights-list li {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border-left: 3px solid #ed8936;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .competitive-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .competitive-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #68d391;
+        }
+        .competitive-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #38a169;
+            margin-bottom: 5px;
+        }
+        .footer {
+            background: #2d3748;
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+        }
+        .footer .brand {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        .rating {
+            color: #f6ad55;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Executive Analytics Report</h1>
+            <p>TechBazar Electronics Pvt Ltd • ShopBot Pro AI Assistant</p>
+            <p>Report Period: Last 30 Days (January 2025)</p>
+        </div>
+
+        <div class="content">
+            <h2>Performance Overview</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value">2,847</div>
+                    <div class="metric-label">Total Conversations</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">₹12,45,600</div>
+                    <div class="metric-label">Total Revenue</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">68%</div>
+                    <div class="metric-label">Conversion Rate</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">₹43,750</div>
+                    <div class="metric-label">Average Order Value</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">4.8/5</div>
+                    <div class="metric-label">Customer Satisfaction</div>
+                </div>
+            </div>
+
+            <h2>Platform Performance</h2>
+            <table class="platform-table">
+                <thead>
+                    <tr>
+                        <th>Platform</th>
+                        <th>Conversations</th>
+                        <th>Revenue</th>
+                        <th>Avg Session Time</th>
+                        <th>Primary Language</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>WhatsApp</strong></td>
+                        <td>1,243</td>
+                        <td>₹4,86,700</td>
+                        <td>3.2 minutes</td>
+                        <td>Hindi (78%), English (22%)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Instagram</strong></td>
+                        <td>892</td>
+                        <td>₹5,67,200</td>
+                        <td>5.8 minutes</td>
+                        <td>English (92%)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Web Chat</strong></td>
+                        <td>712</td>
+                        <td>₹1,91,700</td>
+                        <td>4.1 minutes</td>
+                        <td>English (65%), Hindi (35%)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="section">
+                <h3>AI Performance Metrics</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">94%</div>
+                        <div class="metric-label">Recommendation Accuracy</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">1.1s</div>
+                        <div class="metric-label">Avg Response Time</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">89%</div>
+                        <div class="metric-label">Knowledge Utilization</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">78%</div>
+                        <div class="metric-label">Customer Follow-through</div>
+                    </div>
+                </div>
+            </div>
+
+            <h2>Top Services</h2>
+            <table class="platform-table">
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>Count</th>
+                        <th>Revenue</th>
+                        <th>Rating</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Smartphone Consultation</strong></td>
+                        <td>1,247</td>
+                        <td>₹6,23,500</td>
+                        <td><span class="rating">★★★★★ 4.9/5</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Laptop Configuration</strong></td>
+                        <td>834</td>
+                        <td>₹4,17,000</td>
+                        <td><span class="rating">★★★★★ 4.8/5</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Electronics Accessories</strong></td>
+                        <td>766</td>
+                        <td>₹2,05,100</td>
+                        <td><span class="rating">★★★★☆ 4.7/5</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="section">
+                <h3>Key Business Insights</h3>
+                <ul class="insights-list">
+                    <li>WhatsApp shows highest engagement in Hindi-speaking customers</li>
+                    <li>Instagram generates premium product sales with 89% higher AOV</li>
+                    <li>Evening hours (6-9 PM) generate 45% of total revenue</li>
+                    <li>Customers comparing 2-3 options convert 34% higher</li>
+                    <li>Product recommendation accuracy improved 23% this month</li>
+                </ul>
+            </div>
+
+            <h2>Competitive Advantage</h2>
+            <div class="competitive-grid">
+                <div class="competitive-card">
+                    <div class="competitive-value">86% faster</div>
+                    <div class="metric-label">Response Time</div>
+                </div>
+                <div class="competitive-card">
+                    <div class="competitive-value">143% higher</div>
+                    <div class="metric-label">Conversion Rate</div>
+                </div>
+                <div class="competitive-card">
+                    <div class="competitive-value">99.8%</div>
+                    <div class="metric-label">Availability</div>
+                </div>
+                <div class="competitive-card">
+                    <div class="competitive-value">1840%</div>
+                    <div class="metric-label">Annual ROI</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="brand">AgentHub</div>
+            <p>Industry-Specialized AI Assistant Platform</p>
+            <p>Report generated on August 1, 2025</p>
+        </div>
+    </div>
+</body>
+</html>

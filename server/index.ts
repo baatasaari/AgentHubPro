@@ -16,6 +16,45 @@ app.use(express.json());
 const distPath = path.join(__dirname, '../dist/public');
 app.use(express.static(distPath));
 
+// Email reporting endpoints (must come before the catch-all /api/* middleware)
+app.post('/api/email/send-report', async (req, res) => {
+  try {
+    console.log('Email report endpoint called');
+    const { simpleEmailService } = await import('./simple-email-service.js');
+    const { toEmail, reportData } = req.body;
+    
+    if (!toEmail || !reportData) {
+      return res.status(400).json({ error: 'Missing toEmail or reportData' });
+    }
+
+    console.log(`Sending report to: ${toEmail}`);
+    const result = await simpleEmailService.sendExecutiveReport(toEmail, reportData);
+    
+    if (result.success) {
+      console.log(`Report sent successfully to ${toEmail}`);
+      res.json({ 
+        success: true, 
+        message: `Executive report sent to ${toEmail}`,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      console.error(`Email sending failed: ${result.error}`);
+      res.status(500).json({ 
+        success: false, 
+        error: result.error,
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (error: any) {
+    console.error('Email service error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Simulated microservices responses (when Docker services not available)
 const simulatedResponses = {
   '/api/agents': [
@@ -167,6 +206,8 @@ app.use('/api', async (req, res, next) => {
     timestamp: new Date().toISOString()
   });
 });
+
+
 
 // Health check endpoint
 app.get('/health', (req, res) => {
