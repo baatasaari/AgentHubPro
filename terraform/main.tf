@@ -392,7 +392,8 @@ resource "google_service_account" "microservices_sa" {
 # IAM roles for service account
 resource "google_project_iam_member" "microservices_permissions" {
   for_each = toset([
-    "roles/cloudsql.client",
+    "roles/bigquery.dataEditor",
+    "roles/bigquery.jobUser",
     "roles/redis.editor",
     "roles/storage.objectAdmin",
     "roles/secretmanager.secretAccessor",
@@ -538,56 +539,90 @@ data "google_iam_policy" "public_access" {
   }
 }
 
-# Cloud SQL PostgreSQL instance
-resource "google_sql_database_instance" "main" {
-  name             = "agenthub-postgres-${var.environment}"
-  database_version = "POSTGRES_14"
-  region           = var.region
-  project          = var.project_id
-
-  settings {
-    tier = "db-custom-2-4096"  # 2 vCPUs, 4GB RAM
-    
-    disk_size         = 100
-    disk_type         = "PD_SSD"
-    disk_autoresize   = true
-    
-    availability_type = "REGIONAL"  # High availability
-    
-    backup_configuration {
-      enabled                        = true
-      start_time                     = "03:00"
-      point_in_time_recovery_enabled = true
-      backup_retention_settings {
-        retained_backups = 30
-      }
-    }
-    
-    ip_configuration {
-      ipv4_enabled    = false
-      private_network = google_compute_network.microservices_network.id
-      require_ssl     = true
-    }
-    
-    database_flags {
-      name  = "max_connections"
-      value = "100"
-    }
+# BigQuery datasets for data warehouse
+resource "google_bigquery_dataset" "agenthub_production" {
+  dataset_id  = "agenthub_production"
+  project     = var.project_id
+  location    = var.region
+  
+  description = "AgentHub production data warehouse"
+  
+  default_table_expiration_ms = 2592000000  # 30 days
+  
+  access {
+    role          = "OWNER"
+    user_by_email = "agenthub-microservices@${var.project_id}.iam.gserviceaccount.com"
   }
-
-  deletion_protection = true
-
+  
+  access {
+    role   = "READER"
+    domain = "gmail.com"  # Allow read access for reporting
+  }
+  
   depends_on = [
     google_project_service.required_apis,
-    google_compute_network.microservices_network
+    google_service_account.microservices_sa
   ]
 }
 
-# Cloud SQL Database
-resource "google_sql_database" "agenthub_db" {
-  name     = "agenthub"
-  instance = google_sql_database_instance.main.name
-  project  = var.project_id
+resource "google_bigquery_dataset" "agenthub_analytics" {
+  dataset_id  = "agenthub_analytics"
+  project     = var.project_id
+  location    = var.region
+  
+  description = "AgentHub analytics and reporting data"
+  
+  default_table_expiration_ms = 7776000000  # 90 days
+  
+  access {
+    role          = "OWNER"
+    user_by_email = "agenthub-microservices@${var.project_id}.iam.gserviceaccount.com"
+  }
+  
+  depends_on = [
+    google_project_service.required_apis,
+    google_service_account.microservices_sa
+  ]
+}
+
+resource "google_bigquery_dataset" "agenthub_logs" {
+  dataset_id  = "agenthub_logs"
+  project     = var.project_id
+  location    = var.region
+  
+  description = "AgentHub system logs and monitoring data"
+  
+  default_table_expiration_ms = 2592000000  # 30 days
+  
+  access {
+    role          = "OWNER"
+    user_by_email = "agenthub-microservices@${var.project_id}.iam.gserviceaccount.com"
+  }
+  
+  depends_on = [
+    google_project_service.required_apis,
+    google_service_account.microservices_sa
+  ]
+}
+
+resource "google_bigquery_dataset" "agenthub_streaming" {
+  dataset_id  = "agenthub_streaming"
+  project     = var.project_id
+  location    = var.region
+  
+  description = "AgentHub real-time streaming data"
+  
+  default_table_expiration_ms = 604800000  # 7 days
+  
+  access {
+    role          = "OWNER"
+    user_by_email = "agenthub-microservices@${var.project_id}.iam.gserviceaccount.com"
+  }
+  
+  depends_on = [
+    google_project_service.required_apis,
+    google_service_account.microservices_sa
+  ]
 }
 
 # Redis instance for caching
@@ -653,9 +688,14 @@ output "service_urls" {
   }
 }
 
-output "database_connection_name" {
-  description = "Cloud SQL connection name"
-  value       = google_sql_database_instance.main.connection_name
+output "bigquery_datasets" {
+  description = "BigQuery dataset information"
+  value = {
+    production = google_bigquery_dataset.agenthub_production.dataset_id
+    analytics  = google_bigquery_dataset.agenthub_analytics.dataset_id
+    logs       = google_bigquery_dataset.agenthub_logs.dataset_id
+    streaming  = google_bigquery_dataset.agenthub_streaming.dataset_id
+  }
 }
 
 output "redis_host" {

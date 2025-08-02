@@ -37,7 +37,9 @@ The current deployment guide incorrectly uses Cloud SQL PostgreSQL instead of Bi
 
 ✅ **Updated Infrastructure Script**: provision-infrastructure.sh now creates BigQuery datasets
 ✅ **Updated Deployment Guide**: DEPLOYMENT_GUIDE_FINAL.md reflects BigQuery architecture  
+✅ **Updated Terraform Configuration**: terraform/main.tf now uses BigQuery resources instead of Cloud SQL
+✅ **Updated IAM Permissions**: Changed from cloudsql.client to bigquery.dataEditor and bigquery.jobUser
 ✅ **Updated Cost Estimates**: Monthly costs reduced by $100-100
-✅ **Architecture Alignment**: Now matches documented BigQuery-first approach in replit.md
+✅ **Complete Architecture Alignment**: All deployment files now match documented BigQuery-first approach
 
 The architecture is now correctly aligned with the documented BigQuery-based data warehouse approach for the AgentHub microservices platform.
