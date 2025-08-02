@@ -96,8 +96,8 @@ export default function UserManagement() {
       firstName: "",
       lastName: "",
       organizationId: undefined,
-      role: "business_user",
-      permissionLevel: 4,
+      role: "user",
+      permissionLevel: 2,
       isActive: true,
       isEmailVerified: false,
     },
@@ -129,10 +129,9 @@ export default function UserManagement() {
     const roleData = USER_ROLES.find(r => r.value === role);
     if (!roleData) return "secondary";
     
-    if (roleData.level >= 9) return "destructive"; // Platform Admin, Org Owner
-    if (roleData.level >= 7) return "default"; // Admin roles
-    if (roleData.level >= 5) return "secondary"; // Manager roles
-    return "outline"; // User roles
+    if (roleData.level === 3) return "destructive"; // Admin
+    if (roleData.level === 2) return "default"; // User
+    return "outline"; // Viewer
   };
 
   const getPermissionLevelText = (level: number) => {

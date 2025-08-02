@@ -65,4 +65,4 @@ localPort = 8008
 externalPort = 8008
 
 [agent]
-integrations = ["javascript_openai==1.0.0", "javascript_stripe==1.0.0", "javascript_database==1.0.0", "javascript_sendgrid==1.0.0"]
+integrations = ["javascript_sendgrid==1.0.0", "javascript_openai==1.0.0", "javascript_database==1.0.0", "javascript_log_in_with_replit==1.0.0", "javascript_stripe==1.0.0"]

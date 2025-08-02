@@ -242,18 +242,11 @@ export const INTERFACE_TYPES = [
   { value: "whatsapp", label: "WhatsApp Integration", description: "Connect via WhatsApp Business API" },
 ] as const;
 
-// User roles and permission levels
+// Simplified user roles
 export const USER_ROLES = [
-  { value: "platform_admin", label: "Platform Administrator", level: 10, description: "Full platform access" },
-  { value: "organization_owner", label: "Organization Owner", level: 9, description: "Full organizational access" },
-  { value: "agent_admin", label: "Agent Administrator", level: 8, description: "Agent management access" },
-  { value: "agent_developer", label: "Agent Developer", level: 7, description: "Development access" },
-  { value: "business_analyst", label: "Business Analyst", level: 6, description: "Content management access" },
-  { value: "cs_manager", label: "Customer Success Manager", level: 5, description: "Customer interaction access" },
-  { value: "business_user", label: "Business User", level: 4, description: "Basic user access" },
-  { value: "viewer", label: "Viewer", level: 3, description: "Read-only access" },
-  { value: "guest", label: "Guest User", level: 2, description: "Limited guest access" },
-  { value: "trial", label: "Trial User", level: 1, description: "Trial access" },
+  { value: "admin", label: "Admin", level: 3, description: "Full access to organization" },
+  { value: "user", label: "User", level: 2, description: "Standard user access" },
+  { value: "viewer", label: "Viewer", level: 1, description: "Read-only access" },
 ] as const;
 
 export const SUBSCRIPTION_PLANS = [
