@@ -11,6 +11,7 @@ import Billing from "@/pages/billing";
 import Analytics from "@/pages/analytics";
 import RAGManagement from "@/pages/rag-management";
 import AdminDashboard from "@/pages/admin-dashboard"; 
+import UserManagement from "@/pages/user-management";
 import ConsultationBooking from "@/pages/consultation-booking";
 import PaymentDemo from "@/pages/payment-demo";
 import ConversationalPaymentDemo from "@/pages/conversational-payment-demo";
@@ -29,6 +30,7 @@ function Router() {
         <Route path="/billing" component={Billing} />
         <Route path="/rag-management" component={RAGManagement} />
         <Route path="/admin-dashboard" component={AdminDashboard} />
+        <Route path="/user-management" component={UserManagement} />
         <Route path="/consultation-booking" component={ConsultationBooking} />
         <Route path="/payment-demo" component={PaymentDemo} />
         <Route path="/conversational-payment-demo" component={ConversationalPaymentDemo} />

@@ -1,47 +1,177 @@
-import { agents, conversations, type Agent, type InsertAgent, type Conversation, type InsertConversation } from "@shared/schema";
+import { 
+  agents, conversations, users, organizations, userSessions, userPermissions, auditLogs,
+  type Agent, type InsertAgent, 
+  type Conversation, type InsertConversation,
+  type User, type InsertUser,
+  type Organization, type InsertOrganization,
+  type UserSession,
+  type UserPermission, type InsertUserPermission,
+  type AuditLog, type InsertAuditLog
+} from "@shared/schema";
 import { BigQuery } from '@google-cloud/bigquery';
 import { databaseConfig, isDatabaseConfigured, validateDatabaseConfig } from './config';
 
 export interface IStorage {
-  // Agent operations
+  // Organization operations
+  getOrganization(id: number): Promise<Organization | undefined>;
+  createOrganization(org: InsertOrganization): Promise<Organization>;
+  updateOrganization(id: number, updates: Partial<InsertOrganization>): Promise<Organization | undefined>;
+
+  // User operations
+  getUser(id: number): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUsersByOrganization(organizationId: number): Promise<User[]>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined>;
+  deleteUser(id: number): Promise<boolean>;
+  updateUserRole(id: number, role: string, permissionLevel: number): Promise<User | undefined>;
+
+  // Session operations
+  createSession(userId: number, sessionToken: string, expiresAt: Date): Promise<UserSession>;
+  getSession(sessionToken: string): Promise<UserSession | undefined>;
+  deleteSession(sessionToken: string): Promise<boolean>;
+
+  // Permission operations
+  getUserPermissions(userId: number): Promise<UserPermission[]>;
+  grantPermission(permission: InsertUserPermission): Promise<UserPermission>;
+  revokePermission(userId: number, resource: string, action: string): Promise<boolean>;
+
+  // Agent operations (updated with organization context)
   getAgent(id: number): Promise<Agent | undefined>;
-  getAllAgents(): Promise<Agent[]>;
+  getAllAgents(organizationId?: number): Promise<Agent[]>;
+  getAgentsByUser(userId: number): Promise<Agent[]>;
   createAgent(agent: InsertAgent): Promise<Agent>;
   updateAgent(id: number, updates: Partial<InsertAgent>): Promise<Agent | undefined>;
   deleteAgent(id: number): Promise<boolean>;
   updateAgentStatus(id: number, status: string): Promise<Agent | undefined>;
 
-  // Conversation operations
+  // Conversation operations (updated with organization context)
   getConversationsByAgent(agentId: number): Promise<Conversation[]>;
+  getConversationsByOrganization(organizationId: number): Promise<Conversation[]>;
   createConversation(conversation: InsertConversation): Promise<Conversation>;
-  getUsageStats(): Promise<{
+  getUsageStats(organizationId?: number): Promise<{
     totalConversations: number;
     totalCost: number;
     activeAgents: number;
     monthlyUsage: { agentId: number; conversations: number; cost: number }[];
   }>;
+
+  // Audit operations
+  logAction(auditLog: InsertAuditLog): Promise<AuditLog>;
+  getAuditLogs(organizationId: number, limit?: number): Promise<AuditLog[]>;
 }
 
 export class MemStorage implements IStorage {
+  private organizations: Map<number, Organization>;
+  private users: Map<number, User>;
+  private userSessions: Map<string, UserSession>;
+  private userPermissions: Map<number, UserPermission[]>;
   private agents: Map<number, Agent>;
   private conversations: Map<number, Conversation>;
+  private auditLogs: Map<number, AuditLog>;
+  
+  private currentOrgId: number;
+  private currentUserId: number;
   private currentAgentId: number;
   private currentConversationId: number;
+  private currentPermissionId: number;
+  private currentAuditId: number;
 
   constructor() {
+    this.organizations = new Map();
+    this.users = new Map();
+    this.userSessions = new Map();
+    this.userPermissions = new Map();
     this.agents = new Map();
     this.conversations = new Map();
+    this.auditLogs = new Map();
+    
+    this.currentOrgId = 1;
+    this.currentUserId = 1;
     this.currentAgentId = 1;
     this.currentConversationId = 1;
+    this.currentPermissionId = 1;
+    this.currentAuditId = 1;
 
     // Add some sample data for demonstration
     this.initializeSampleData();
   }
 
   private initializeSampleData() {
+    // Initialize sample organization
+    const sampleOrg: Organization = {
+      id: 1,
+      name: "Sample Healthcare Corp",
+      domain: "healthcare-corp.com",
+      settings: "{}",
+      subscriptionPlan: "professional",
+      subscriptionStatus: "active",
+      monthlyUsageLimit: 5000,
+      currentUsage: 1250,
+      createdAt: new Date("2024-11-01"),
+      updatedAt: new Date("2024-11-01"),
+    };
+    this.organizations.set(1, sampleOrg);
+
+    // Initialize sample users
+    const sampleUsers: User[] = [
+      {
+        id: 1,
+        email: "admin@healthcare-corp.com",
+        passwordHash: "hashed_password",
+        firstName: "John",
+        lastName: "Administrator",
+        avatarUrl: null,
+        organizationId: 1,
+        role: "organization_owner",
+        permissionLevel: 9,
+        isActive: true,
+        isEmailVerified: true,
+        lastLoginAt: new Date(),
+        createdAt: new Date("2024-11-01"),
+        updatedAt: new Date("2024-11-01"),
+      },
+      {
+        id: 2,
+        email: "developer@healthcare-corp.com",
+        passwordHash: "hashed_password",
+        firstName: "Jane",
+        lastName: "Developer",
+        avatarUrl: null,
+        organizationId: 1,
+        role: "agent_developer",
+        permissionLevel: 7,
+        isActive: true,
+        isEmailVerified: true,
+        lastLoginAt: new Date(),
+        createdAt: new Date("2024-11-01"),
+        updatedAt: new Date("2024-11-01"),
+      },
+      {
+        id: 3,
+        email: "support@healthcare-corp.com",
+        passwordHash: "hashed_password",
+        firstName: "Mike",
+        lastName: "Support",
+        avatarUrl: null,
+        organizationId: 1,
+        role: "cs_manager",
+        permissionLevel: 5,
+        isActive: true,
+        isEmailVerified: true,
+        lastLoginAt: new Date(),
+        createdAt: new Date("2024-11-01"),
+        updatedAt: new Date("2024-11-01"),
+      }
+    ];
+    
+    sampleUsers.forEach(user => this.users.set(user.id, user));
+
     const sampleAgents: Agent[] = [
       {
         id: 1,
+        organizationId: 1,
+        createdBy: 2,
         businessName: "HealthCare Assistant",
         businessDescription: "AI assistant for healthcare providers to help patients with appointment scheduling, basic health information, and general inquiries.",
         businessDomain: "https://healthcare-example.com",
@@ -49,10 +179,21 @@ export class MemStorage implements IStorage {
         llmModel: "gpt-4-turbo",
         interfaceType: "webchat",
         status: "active",
+        ragEnabled: "true",
+        ragKnowledgeBase: "Healthcare Knowledge Base",
+        ragDocuments: "[]",
+        ragQueryMode: "hybrid",
+        ragChunkSize: 1000,
+        ragOverlap: 200,
+        ragMaxResults: 5,
+        ragConfidenceThreshold: "0.7",
         createdAt: new Date("2024-11-01"),
+        updatedAt: new Date("2024-11-01"),
       },
       {
         id: 2,
+        organizationId: 1,
+        createdBy: 2,
         businessName: "E-commerce Helper",
         businessDescription: "Customer service bot for online retail store to assist with product information, order tracking, and returns.",
         businessDomain: "https://shop-example.com",
@@ -60,10 +201,21 @@ export class MemStorage implements IStorage {
         llmModel: "gpt-3.5-turbo",
         interfaceType: "whatsapp",
         status: "active",
+        ragEnabled: "false",
+        ragKnowledgeBase: "",
+        ragDocuments: "[]",
+        ragQueryMode: "hybrid",
+        ragChunkSize: 1000,
+        ragOverlap: 200,
+        ragMaxResults: 5,
+        ragConfidenceThreshold: "0.7",
         createdAt: new Date("2024-11-15"),
+        updatedAt: new Date("2024-11-15"),
       },
       {
         id: 3,
+        organizationId: 1,
+        createdBy: 1,
         businessName: "Realty Assistant",
         businessDescription: "Real estate agent assistant to help clients with property information, scheduling viewings, and market insights.",
         businessDomain: "https://realty-example.com",
@@ -71,7 +223,16 @@ export class MemStorage implements IStorage {
         llmModel: "claude-3-sonnet",
         interfaceType: "webchat",
         status: "draft",
+        ragEnabled: "false",
+        ragKnowledgeBase: "",
+        ragDocuments: "[]",
+        ragQueryMode: "hybrid",
+        ragChunkSize: 1000,
+        ragOverlap: 200,
+        ragMaxResults: 5,
+        ragConfidenceThreshold: "0.7",
         createdAt: new Date("2024-12-01"),
+        updatedAt: new Date("2024-12-01"),
       },
     ];
 
@@ -81,29 +242,221 @@ export class MemStorage implements IStorage {
 
     this.currentAgentId = Math.max(...sampleAgents.map(a => a.id)) + 1;
 
-    // Add sample conversations
+    // Add sample conversations with organization context
     const sampleConversations: Conversation[] = [
-      { id: 1, agentId: 1, tokens: 2500, cost: "0.025", createdAt: new Date("2024-12-15") },
-      { id: 2, agentId: 1, tokens: 1800, cost: "0.018", createdAt: new Date("2024-12-15") },
-      { id: 3, agentId: 2, tokens: 1200, cost: "0.0024", createdAt: new Date("2024-12-14") },
-      { id: 4, agentId: 2, tokens: 900, cost: "0.0018", createdAt: new Date("2024-12-14") },
+      { id: 1, agentId: 1, organizationId: 1, userId: 3, tokens: 120, cost: 0.0024, createdAt: new Date("2024-11-01") },
+      { id: 2, agentId: 1, organizationId: 1, userId: 3, tokens: 95, cost: 0.0019, createdAt: new Date("2024-11-02") },
+      { id: 3, agentId: 2, organizationId: 1, userId: null, tokens: 200, cost: 0.0004, createdAt: new Date("2024-11-15") },
+      { id: 4, agentId: 2, organizationId: 1, userId: null, tokens: 150, cost: 0.0003, createdAt: new Date("2024-11-16") },
     ];
 
-    sampleConversations.forEach(conv => {
-      this.conversations.set(conv.id, conv);
-    });
+    sampleConversations.forEach(conversation => this.conversations.set(conversation.id, conversation));
 
-    this.currentConversationId = Math.max(...sampleConversations.map(c => c.id)) + 1;
+    // Add sample audit logs
+    const sampleAuditLogs: AuditLog[] = [
+      {
+        id: 1,
+        userId: 1,
+        organizationId: 1,
+        action: "user_created",
+        resource: "users",
+        resourceId: 2,
+        details: '{"role": "agent_developer"}',
+        ipAddress: "192.168.1.100",
+        userAgent: "Mozilla/5.0...",
+        createdAt: new Date("2024-11-01"),
+      },
+      {
+        id: 2,
+        userId: 2,
+        organizationId: 1,
+        action: "agent_created",
+        resource: "agents",
+        resourceId: 1,
+        details: '{"name": "HealthCare Assistant"}',
+        ipAddress: "192.168.1.101",
+        userAgent: "Mozilla/5.0...",
+        createdAt: new Date("2024-11-01"),
+      },
+    ];
+
+    sampleAuditLogs.forEach(log => this.auditLogs.set(log.id, log));
+
+    this.currentOrgId = 2;
+    this.currentUserId = 4;
+    this.currentConversationId = 5;
+    this.currentAuditId = 3;
   }
 
   async getAgent(id: number): Promise<Agent | undefined> {
     return this.agents.get(id);
   }
 
-  async getAllAgents(): Promise<Agent[]> {
-    return Array.from(this.agents.values()).sort((a, b) => 
+  // Organization operations
+  async getOrganization(id: number): Promise<Organization | undefined> {
+    return this.organizations.get(id);
+  }
+
+  async createOrganization(org: InsertOrganization): Promise<Organization> {
+    const newOrg: Organization = {
+      id: this.currentOrgId++,
+      ...org,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.organizations.set(newOrg.id, newOrg);
+    return newOrg;
+  }
+
+  async updateOrganization(id: number, updates: Partial<InsertOrganization>): Promise<Organization | undefined> {
+    const org = this.organizations.get(id);
+    if (!org) return undefined;
+    
+    const updatedOrg = { ...org, ...updates, updatedAt: new Date() };
+    this.organizations.set(id, updatedOrg);
+    return updatedOrg;
+  }
+
+  // User operations
+  async getUser(id: number): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.email === email);
+  }
+
+  async getUsersByOrganization(organizationId: number): Promise<User[]> {
+    return Array.from(this.users.values()).filter(user => user.organizationId === organizationId);
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    const { password, ...userData } = user;
+    const newUser: User = {
+      id: this.currentUserId++,
+      ...userData,
+      passwordHash: password ? `hashed_${password}` : null,
+      lastLoginAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.users.set(newUser.id, newUser);
+    return newUser;
+  }
+
+  async updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+    
+    const { password, ...updateData } = updates;
+    const updatedUser = { 
+      ...user, 
+      ...updateData, 
+      passwordHash: password ? `hashed_${password}` : user.passwordHash,
+      updatedAt: new Date() 
+    };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+
+  async deleteUser(id: number): Promise<boolean> {
+    return this.users.delete(id);
+  }
+
+  async updateUserRole(id: number, role: string, permissionLevel: number): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+    
+    const updatedUser = { ...user, role, permissionLevel, updatedAt: new Date() };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+
+  // Session operations
+  async createSession(userId: number, sessionToken: string, expiresAt: Date): Promise<UserSession> {
+    const session: UserSession = {
+      id: Date.now(),
+      userId,
+      sessionToken,
+      expiresAt,
+      ipAddress: null,
+      userAgent: null,
+      createdAt: new Date(),
+    };
+    this.userSessions.set(sessionToken, session);
+    return session;
+  }
+
+  async getSession(sessionToken: string): Promise<UserSession | undefined> {
+    return this.userSessions.get(sessionToken);
+  }
+
+  async deleteSession(sessionToken: string): Promise<boolean> {
+    return this.userSessions.delete(sessionToken);
+  }
+
+  // Permission operations
+  async getUserPermissions(userId: number): Promise<UserPermission[]> {
+    return this.userPermissions.get(userId) || [];
+  }
+
+  async grantPermission(permission: InsertUserPermission): Promise<UserPermission> {
+    const newPermission: UserPermission = {
+      id: this.currentPermissionId++,
+      ...permission,
+      createdAt: new Date(),
+    };
+    
+    const userPermissions = this.userPermissions.get(permission.userId) || [];
+    userPermissions.push(newPermission);
+    this.userPermissions.set(permission.userId, userPermissions);
+    
+    return newPermission;
+  }
+
+  async revokePermission(userId: number, resource: string, action: string): Promise<boolean> {
+    const userPermissions = this.userPermissions.get(userId);
+    if (!userPermissions) return false;
+    
+    const filteredPermissions = userPermissions.filter(
+      p => !(p.resource === resource && p.action === action)
+    );
+    this.userPermissions.set(userId, filteredPermissions);
+    return true;
+  }
+
+  // Audit operations
+  async logAction(auditLog: InsertAuditLog): Promise<AuditLog> {
+    const newLog: AuditLog = {
+      id: this.currentAuditId++,
+      ...auditLog,
+      createdAt: new Date(),
+    };
+    this.auditLogs.set(newLog.id, newLog);
+    return newLog;
+  }
+
+  async getAuditLogs(organizationId: number, limit: number = 50): Promise<AuditLog[]> {
+    return Array.from(this.auditLogs.values())
+      .filter(log => log.organizationId === organizationId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, limit);
+  }
+
+  async getAllAgents(organizationId?: number): Promise<Agent[]> {
+    let agents = Array.from(this.agents.values());
+    if (organizationId) {
+      agents = agents.filter(agent => agent.organizationId === organizationId);
+    }
+    return agents.sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
+  }
+
+  async getAgentsByUser(userId: number): Promise<Agent[]> {
+    return Array.from(this.agents.values())
+      .filter(agent => agent.createdBy === userId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   async createAgent(insertAgent: InsertAgent): Promise<Agent> {
@@ -113,6 +466,7 @@ export class MemStorage implements IStorage {
       id,
       status: 'draft',
       createdAt: new Date(),
+      updatedAt: new Date(),
       businessDomain: insertAgent.businessDomain || null,
     };
     this.agents.set(id, agent);
@@ -123,7 +477,7 @@ export class MemStorage implements IStorage {
     const existing = this.agents.get(id);
     if (!existing) return undefined;
 
-    const updated = { ...existing, ...updates };
+    const updated = { ...existing, ...updates, updatedAt: new Date() };
     this.agents.set(id, updated);
     return updated;
   }
@@ -132,7 +486,7 @@ export class MemStorage implements IStorage {
     const existing = this.agents.get(id);
     if (!existing) return undefined;
 
-    const updated = { ...existing, status };
+    const updated = { ...existing, status, updatedAt: new Date() };
     this.agents.set(id, updated);
     return updated;
   }
@@ -143,6 +497,10 @@ export class MemStorage implements IStorage {
 
   async getConversationsByAgent(agentId: number): Promise<Conversation[]> {
     return Array.from(this.conversations.values()).filter(c => c.agentId === agentId);
+  }
+
+  async getConversationsByOrganization(organizationId: number): Promise<Conversation[]> {
+    return Array.from(this.conversations.values()).filter(c => c.organizationId === organizationId);
   }
 
   async createConversation(insertConversation: InsertConversation): Promise<Conversation> {
