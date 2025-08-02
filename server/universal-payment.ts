@@ -116,7 +116,7 @@ export class UniversalPaymentService {
     try {
       if (!this.stripe) {
         // Fallback payment link generation without Stripe
-        const fallbackLink = `https://pay.example.com/invoice/${context.agentId}/${Date.now()}?amount=${amount}&description=${encodeURIComponent(description)}`;
+        const fallbackLink = `${process.env.BUSINESS_BASE_URL || 'https://agenthub.com'}/pay/invoice/${context.agentId}/${Date.now()}?amount=${amount}&description=${encodeURIComponent(description)}`;
         
         return {
           success: true,
@@ -151,8 +151,8 @@ export class UniversalPaymentService {
           quantity: 1,
         }],
         mode: 'payment',
-        success_url: `https://example.com/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `https://example.com/cancel`,
+        success_url: `${process.env.BUSINESS_BASE_URL || 'https://agenthub.com'}/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.BUSINESS_BASE_URL || 'https://agenthub.com'}/cancel`,
         metadata: {
           agentId: context.agentId.toString(),
           customerId: context.customerId,

@@ -144,7 +144,7 @@ export function generatePaymentLink(
   consultationId: string,
   method: PaymentMethod
 ): string {
-  const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
+  const baseUrl = config.api.baseUrl;
   
   switch (method) {
     case PaymentMethod.UPI:

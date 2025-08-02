@@ -23,7 +23,7 @@ variable "project_id" {
 variable "region" {
   description = "GCP Region"
   type        = string
-  default     = "asia-south1"  # Mumbai region for Indian customers
+  default     = "${var.region}"  # Mumbai region for Indian customers
 }
 
 variable "environment" {

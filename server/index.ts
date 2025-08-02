@@ -5,6 +5,7 @@ import { createProxyMiddleware } from "http-proxy-middleware";
 import path from "path";
 import { fileURLToPath } from 'url';
 import fs from "fs";
+import config from "./config.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -63,7 +64,7 @@ const simulatedResponses = {
       "id": 1,
       "businessName": "HealthCare Assistant",
       "businessDescription": "AI assistant for healthcare providers to help patients with appointment scheduling, basic health information, and general inquiries.",
-      "businessDomain": "https://healthcare-example.com",
+      "businessDomain": `${config.business.baseUrl}/demo/healthcare`,
       "industry": "healthcare",
       "llmModel": "gpt-4-turbo",
       "interfaceType": "webchat",
@@ -82,7 +83,7 @@ const simulatedResponses = {
       "id": 2,
       "businessName": "E-commerce Helper",
       "businessDescription": "Customer service bot for online retail store to assist with product information, order tracking, and returns.",
-      "businessDomain": "https://shop-example.com",
+      "businessDomain": `${config.business.baseUrl}/demo/ecommerce`,
       "industry": "retail",
       "llmModel": "gpt-3.5-turbo",
       "interfaceType": "whatsapp",
@@ -101,7 +102,7 @@ const simulatedResponses = {
       "id": 3,
       "businessName": "Legal Advisor Bot",
       "businessDescription": "Legal assistant for document analysis, case research, and client consultation scheduling.",
-      "businessDomain": "https://lawfirm-example.com",
+      "businessDomain": `${config.business.baseUrl}/demo/legal`,
       "industry": "legal",
       "llmModel": "gpt-4-turbo",
       "interfaceType": "webchat",
@@ -236,11 +237,10 @@ app.get('*', (req, res) => {
 });
 
 const server = createServer(app);
-const port = Number(process.env.PORT) || 5000;
 
-server.listen(port, "0.0.0.0", () => {
-  console.log(`🚀 AgentHub Microservices Platform running on port ${port}`);
+server.listen(config.server.port, config.server.host, () => {
+  console.log(`🚀 AgentHub Microservices Platform running on port ${config.server.port}`);
   console.log('🔧 Mode: Microservices simulation (Docker services will be preferred when available)');
-  console.log('🌐 Frontend: http://localhost:5000');
-  console.log('📊 Health: http://localhost:5000/health');
+  console.log(`🌐 Frontend: ${config.api.baseUrl}`);
+  console.log(`📊 Health: ${config.api.baseUrl}/health`);
 });

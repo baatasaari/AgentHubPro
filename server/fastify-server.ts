@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import config from './config.js';
 import cors from '@fastify/cors';
 import staticFiles from '@fastify/static';
 import multipart from '@fastify/multipart';
@@ -43,7 +44,7 @@ async function registerPlugins() {
         description: 'Industry-specialized AI Assistant SaaS Platform API',
         version: '1.0.0'
       },
-      host: 'localhost:5000',
+      host: `${config.server.host}:${config.server.port}`,
       schemes: ['http'],
       consumes: ['application/json'],
       produces: ['application/json'],
@@ -350,7 +351,7 @@ async function registerAgentRoutes() {
     };
     
     var script = document.createElement('script');
-    script.src = 'https://cdn.agenthub.com/widget.js';
+    script.src = `${config.widget.cdnUrl}/widget.js`;
     script.onload = function() {
         if (typeof AgentHub !== 'undefined') {
             AgentHub.init(agentConfig);

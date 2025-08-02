@@ -46,7 +46,7 @@ export default function Settings() {
     openaiKey: "sk-••••••••••••••••••••••••",
     anthropicKey: "",
     googleKey: "",
-    webhookUrl: "https://yoursite.com/webhook",
+    webhookUrl: `${import.meta.env.VITE_BUSINESS_BASE_URL || 'https://yourdomain.com'}/webhook`,
     rateLimitEnabled: true,
     maxRequestsPerMinute: 100
   });

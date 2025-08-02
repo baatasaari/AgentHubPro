@@ -395,7 +395,7 @@ Please prepare for the consultation and contact the customer if needed.
   private async generateMeetingLink(booking: BookingRequest): Promise<string> {
     // In production, integrate with Zoom, Google Meet, or Microsoft Teams API
     // Mock implementation
-    return `https://meet.agenthub.in/${booking.consultationId}`;
+    return `${process.env.DOMAIN_MEET || 'https://meet.agenthub.in'}/${booking.consultationId}`;
   }
 
   private async getSlotDetails(slotId: string): Promise<CalendarSlot | null> {

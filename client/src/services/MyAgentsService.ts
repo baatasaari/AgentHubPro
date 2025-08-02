@@ -59,7 +59,7 @@ export interface BulkOperation {
 }
 
 export class MyAgentsService {
-  private static baseUrl = 'http://localhost:8006/api/my-agents';
+  private static baseUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/my-agents`;
 
   static async getAllAgents(params?: {
     status?: string;
