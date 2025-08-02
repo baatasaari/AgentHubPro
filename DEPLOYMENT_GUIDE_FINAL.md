@@ -76,7 +76,7 @@ PROJECT_ID=$PROJECT_ID ./scripts/provision-infrastructure.sh
 
 **Creates:**
 - VPC network with private subnet (10.1.0.0/16)
-- Cloud SQL PostgreSQL (HA, 4GB RAM, 100GB SSD)
+- BigQuery datasets for analytics and data storage
 - Redis cache (HA, 4GB memory)
 - 10 service accounts with IAM roles
 - 5 Cloud Storage buckets
@@ -260,10 +260,10 @@ gcloud run services update-traffic SERVICE_NAME --to-latest --region=$REGION
 | API Gateway + Core Services | $550-1,100 |
 | Domain + Analytics Services | $450-900 |
 | Infrastructure Services | $240-480 |
-| Cloud SQL Database (HA) | $200-400 |
+| BigQuery Data Warehouse | $100-300 |
 | Redis Cache | $80-150 |
 | Storage + Networking | $80-160 |
-| **Total Monthly Cost** | **$1,600-3,190** |
+| **Total Monthly Cost** | **$1,500-3,090** |
 
 ### Cost Optimization
 

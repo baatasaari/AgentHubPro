@@ -164,28 +164,30 @@ done
 
 log_success "IAM permissions configured"
 
-# Create Cloud SQL PostgreSQL instance
-log_info "Creating Cloud SQL PostgreSQL instance..."
-gcloud sql instances create agenthub-postgres-$ENVIRONMENT \
-    --database-version=POSTGRES_14 \
-    --tier=db-custom-2-4096 \
-    --region=$REGION \
-    --network=agenthub-network \
-    --no-assign-ip \
-    --availability-type=REGIONAL \
-    --storage-type=SSD \
-    --storage-size=100GB \
-    --storage-auto-increase \
-    --backup-start-time=03:00 \
-    --enable-point-in-time-recovery \
-    --retained-backups-count=30 \
-    --database-flags=max_connections=100
+# Create BigQuery datasets
+log_info "Creating BigQuery datasets for data warehouse..."
 
-# Create database
-gcloud sql databases create agenthub \
-    --instance=agenthub-postgres-$ENVIRONMENT
+# Create main application dataset
+bq mk --location=$REGION --dataset \
+    --description="AgentHub production data warehouse" \
+    $PROJECT_ID:agenthub_production
 
-log_success "Cloud SQL PostgreSQL instance created"
+# Create analytics dataset  
+bq mk --location=$REGION --dataset \
+    --description="AgentHub analytics and reporting data" \
+    $PROJECT_ID:agenthub_analytics
+
+# Create logs dataset for system monitoring
+bq mk --location=$REGION --dataset \
+    --description="AgentHub system logs and monitoring data" \
+    $PROJECT_ID:agenthub_logs
+
+# Create real-time streaming dataset
+bq mk --location=$REGION --dataset \
+    --description="AgentHub real-time streaming data" \
+    $PROJECT_ID:agenthub_streaming
+
+log_success "BigQuery datasets created"
 
 # Create Redis instance
 log_info "Creating Redis instance for caching..."
@@ -235,7 +237,7 @@ log_success "Cloud Storage buckets created"
 log_info "Creating secrets in Secret Manager..."
 secrets=(
     "openai-api-key"
-    "database-url"
+    "bigquery-credentials"
     "redis-url"
     "jwt-secret"
 )
@@ -303,7 +305,8 @@ export REGION=$REGION
 export ENVIRONMENT=$ENVIRONMENT
 export VPC_NETWORK=agenthub-network
 export VPC_CONNECTOR=agenthub-connector
-export DATABASE_INSTANCE=agenthub-postgres-$ENVIRONMENT
+export BIGQUERY_DATASET=agenthub_production
+export BIGQUERY_PROJECT=$PROJECT_ID
 export REDIS_INSTANCE=agenthub-redis-$ENVIRONMENT
 export BUCKET_SUFFIX=$bucket_suffix
 EOF
