@@ -4,7 +4,10 @@
 AgentHub is a SaaS platform for creating, customizing, and deploying industry-specific AI chatbot agents. It offers end-to-end solutions for building specialized AI assistants with professional interfaces (web chat widgets, WhatsApp integration) that can be embedded into customer websites. The platform aims to provide comprehensive tools for businesses to leverage AI chatbots for customer engagement and operational efficiency.
 
 ## User Preferences
-Preferred communication style: Simple, everyday language for non-technical users.
+- Preferred communication style: Simple, everyday language for non-technical users
+- Platform access: Internal team only - NO customer access to platform
+- Access control: Owner-only full control, strict permission management for internal team
+- DevOps access: Infrastructure and codebase access as needed
 
 ## Recent Changes (August 2, 2025)
 - ✅ **RAG Integration Complete**: Successfully integrated RAG functionality into both Agent Wizard (3-step process) and My Agents management page
