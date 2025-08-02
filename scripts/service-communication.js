@@ -432,5 +432,5 @@ class ServiceCommunicator {
   }
 }
 
+// Export the class as default
 module.exports = ServiceCommunicator;
-module.exports.ServiceCommunicator = ServiceCommunicator;

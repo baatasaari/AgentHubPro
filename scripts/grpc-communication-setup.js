@@ -585,8 +585,8 @@ service AnalyticsCalculationService {
   }
 }
 
+// Export the class as default
 module.exports = GRPCCommunicationManager;
-module.exports.GRPCCommunicationManager = GRPCCommunicationManager;
 
 // Example usage and testing
 if (require.main === module) {

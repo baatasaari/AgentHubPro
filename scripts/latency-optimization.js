@@ -652,5 +652,5 @@ class LatencyOptimizer extends EventEmitter {
   }
 }
 
+// Export the class as default
 module.exports = LatencyOptimizer;
-module.exports.LatencyOptimizer = LatencyOptimizer;
