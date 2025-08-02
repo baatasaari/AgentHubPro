@@ -242,12 +242,52 @@ export const INTERFACE_TYPES = [
   { value: "whatsapp", label: "WhatsApp Integration", description: "Connect via WhatsApp Business API" },
 ] as const;
 
-// Simplified user roles
+// Complete platform roles with Owner control
 export const USER_ROLES = [
-  { value: "admin", label: "Admin", level: 3, description: "Full access to organization" },
-  { value: "user", label: "User", level: 2, description: "Standard user access" },
-  { value: "viewer", label: "Viewer", level: 1, description: "Read-only access" },
+  { value: "owner", label: "Owner", level: 4, description: "Ultimate platform control - user management, all permissions" },
+  { value: "admin", label: "Admin", level: 3, description: "Trusted senior team - agent management, production access" },
+  { value: "user", label: "User", level: 2, description: "Development team - create agents, limited permissions" },
+  { value: "viewer", label: "Viewer", level: 1, description: "Support team - read-only access" },
+  { value: "devops", label: "DevOps", level: 3, description: "Infrastructure team - deployment and system access" },
 ] as const;
+
+// Platform permissions matrix
+export const PLATFORM_PERMISSIONS = {
+  // User Management (Owner only)
+  user_create: { level: 4, description: "Create new user accounts" },
+  user_delete: { level: 4, description: "Delete user accounts" },
+  user_assign_roles: { level: 4, description: "Assign and change user roles" },
+  user_view_all: { level: 3, description: "View all user profiles" },
+  
+  // Agent Management
+  agent_create: { level: 2, description: "Create new agents" },
+  agent_edit_all: { level: 3, description: "Edit any agent configuration" },
+  agent_edit_own: { level: 2, description: "Edit own agents only" },
+  agent_delete: { level: 3, description: "Delete agents" },
+  agent_publish: { level: 3, description: "Publish agents to production" },
+  agent_view_all: { level: 1, description: "View all agent configurations" },
+  
+  // Platform Configuration
+  platform_config_edit: { level: 4, description: "Modify platform settings" },
+  platform_config_view: { level: 3, description: "View platform configuration" },
+  system_health_view: { level: 1, description: "View system status" },
+  
+  // Analytics & Reporting
+  analytics_view_all: { level: 3, description: "View all analytics data" },
+  analytics_view_own: { level: 2, description: "View own analytics only" },
+  analytics_export: { level: 3, description: "Export analytics data" },
+  
+  // Infrastructure (DevOps)
+  infrastructure_manage: { level: 4, description: "Manage infrastructure and deployments", allowedRoles: ["owner", "devops"] },
+  database_access: { level: 4, description: "Direct database access", allowedRoles: ["owner", "devops"] },
+  deployment_control: { level: 3, description: "Control deployment pipeline", allowedRoles: ["admin", "devops"] },
+  
+  // Security & Audit
+  audit_logs_view_all: { level: 4, description: "View all audit logs" },
+  audit_logs_view_filtered: { level: 3, description: "View filtered audit logs" },
+  session_manage_all: { level: 4, description: "Manage all user sessions" },
+  api_keys_manage: { level: 4, description: "Manage API keys and security" },
+} as const;
 
 export const SUBSCRIPTION_PLANS = [
   { value: "trial", label: "Trial", monthlyLimit: 100, price: 0 },
