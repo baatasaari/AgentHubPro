@@ -1,0 +1,413 @@
+# AgentHub Microservices CI/CD Pipeline
+# This Cloud Build configuration handles building and deploying all microservices
+
+options:
+  machineType: 'E2_HIGHCPU_32'
+  
+substitutions:
+  _REGION: 'asia-south1'
+  _ENVIRONMENT: 'prod'
+
+steps:
+  # Step 1: Authenticate with Google Cloud
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud auth configure-docker gcr.io
+        echo "✅ Docker authentication configured"
+
+  # Step 2: Build all microservices in parallel
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-api-gateway'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🏗️ Building api-gateway..."
+        docker build -t gcr.io/$PROJECT_ID/api-gateway:$COMMIT_SHA \
+          -f microservices/api-gateway/Dockerfile \
+          microservices/api-gateway/
+        docker push gcr.io/$PROJECT_ID/api-gateway:$COMMIT_SHA
+        echo "✅ api-gateway built and pushed"
+    waitFor: ['-']
+
+  # Knowledge Management Domain Services
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-document-processing'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🏗️ Building document-processing-service..."
+        docker build -t gcr.io/$PROJECT_ID/document-processing-service:$COMMIT_SHA \
+          -f microservices/document-processing-service/Dockerfile \
+          microservices/document-processing-service/
+        docker push gcr.io/$PROJECT_ID/document-processing-service:$COMMIT_SHA
+        echo "✅ document-processing-service built and pushed"
+    waitFor: ['-']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-embedding-generation'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🏗️ Building embedding-generation-service..."
+        docker build -t gcr.io/$PROJECT_ID/embedding-generation-service:$COMMIT_SHA \
+          -f microservices/embedding-generation-service/Dockerfile \
+          microservices/embedding-generation-service/
+        docker push gcr.io/$PROJECT_ID/embedding-generation-service:$COMMIT_SHA
+        echo "✅ embedding-generation-service built and pushed"
+    waitFor: ['-']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-rag-query'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🏗️ Building rag-query-service..."
+        docker build -t gcr.io/$PROJECT_ID/rag-query-service:$COMMIT_SHA \
+          -f microservices/rag-query-service/Dockerfile \
+          microservices/rag-query-service/
+        docker push gcr.io/$PROJECT_ID/rag-query-service:$COMMIT_SHA
+        echo "✅ rag-query-service built and pushed"
+    waitFor: ['-']
+
+  # Core Business Logic Services
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-agent-management'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🏗️ Building agent-management-service..."
+        docker build -t gcr.io/$PROJECT_ID/agent-management-service:$COMMIT_SHA \
+          -f microservices/agent-management-service/Dockerfile \
+          microservices/agent-management-service/
+        docker push gcr.io/$PROJECT_ID/agent-management-service:$COMMIT_SHA
+        echo "✅ agent-management-service built and pushed"
+    waitFor: ['-']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-conversation-management'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🏗️ Building conversation-management-service..."
+        docker build -t gcr.io/$PROJECT_ID/conversation-management-service:$COMMIT_SHA \
+          -f microservices/conversation-management-service/Dockerfile \
+          microservices/conversation-management-service/
+        docker push gcr.io/$PROJECT_ID/conversation-management-service:$COMMIT_SHA
+        echo "✅ conversation-management-service built and pushed"
+    waitFor: ['-']
+
+  # Payment Processing Services
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-payment-intent'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🏗️ Building payment-intent-service..."
+        docker build -t gcr.io/$PROJECT_ID/payment-intent-service:$COMMIT_SHA \
+          -f microservices/payment-intent-service/Dockerfile \
+          microservices/payment-intent-service/
+        docker push gcr.io/$PROJECT_ID/payment-intent-service:$COMMIT_SHA
+        echo "✅ payment-intent-service built and pushed"
+    waitFor: ['-']
+
+  # Step 3: Deploy services in dependency order
+  # First deploy infrastructure services
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'deploy-service-discovery'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🚀 Deploying service-discovery-service..."
+        gcloud run deploy service-discovery-service \
+          --image gcr.io/$PROJECT_ID/service-discovery-service:$COMMIT_SHA \
+          --region $_REGION \
+          --platform managed \
+          --service-account agenthub-microservices-sa@$PROJECT_ID.iam.gserviceaccount.com \
+          --vpc-connector agenthub-connector \
+          --vpc-egress private-ranges-only \
+          --execution-environment gen2 \
+          --port 8027 \
+          --cpu 0.25 \
+          --memory 256Mi \
+          --min-instances 2 \
+          --max-instances 5 \
+          --no-allow-unauthenticated \
+          --set-env-vars ENVIRONMENT=$_ENVIRONMENT,GCP_PROJECT=$PROJECT_ID
+        echo "✅ service-discovery-service deployed"
+    waitFor: ['build-api-gateway']
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'deploy-authentication'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🚀 Deploying authentication-service..."
+        gcloud run deploy authentication-service \
+          --image gcr.io/$PROJECT_ID/authentication-service:$COMMIT_SHA \
+          --region $_REGION \
+          --platform managed \
+          --service-account agenthub-microservices-sa@$PROJECT_ID.iam.gserviceaccount.com \
+          --vpc-connector agenthub-connector \
+          --vpc-egress private-ranges-only \
+          --execution-environment gen2 \
+          --port 8031 \
+          --cpu 0.5 \
+          --memory 512Mi \
+          --min-instances 2 \
+          --max-instances 30 \
+          --no-allow-unauthenticated \
+          --set-env-vars ENVIRONMENT=$_ENVIRONMENT,GCP_PROJECT=$PROJECT_ID
+        echo "✅ authentication-service deployed"
+    waitFor: ['deploy-service-discovery']
+
+  # Deploy core business services
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'deploy-agent-management'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🚀 Deploying agent-management-service..."
+        gcloud run deploy agent-management-service \
+          --image gcr.io/$PROJECT_ID/agent-management-service:$COMMIT_SHA \
+          --region $_REGION \
+          --platform managed \
+          --service-account agenthub-microservices-sa@$PROJECT_ID.iam.gserviceaccount.com \
+          --vpc-connector agenthub-connector \
+          --vpc-egress private-ranges-only \
+          --execution-environment gen2 \
+          --port 8101 \
+          --cpu 1 \
+          --memory 1Gi \
+          --min-instances 2 \
+          --max-instances 50 \
+          --no-allow-unauthenticated \
+          --set-env-vars ENVIRONMENT=$_ENVIRONMENT,GCP_PROJECT=$PROJECT_ID
+        echo "✅ agent-management-service deployed"
+    waitFor: ['build-agent-management', 'deploy-authentication']
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'deploy-conversation-management'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🚀 Deploying conversation-management-service..."
+        gcloud run deploy conversation-management-service \
+          --image gcr.io/$PROJECT_ID/conversation-management-service:$COMMIT_SHA \
+          --region $_REGION \
+          --platform managed \
+          --service-account agenthub-microservices-sa@$PROJECT_ID.iam.gserviceaccount.com \
+          --vpc-connector agenthub-connector \
+          --vpc-egress private-ranges-only \
+          --execution-environment gen2 \
+          --port 8102 \
+          --cpu 1 \
+          --memory 1Gi \
+          --min-instances 2 \
+          --max-instances 75 \
+          --no-allow-unauthenticated \
+          --set-env-vars ENVIRONMENT=$_ENVIRONMENT,GCP_PROJECT=$PROJECT_ID
+        echo "✅ conversation-management-service deployed"
+    waitFor: ['build-conversation-management', 'deploy-agent-management']
+
+  # Deploy RAG services
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'deploy-document-processing'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🚀 Deploying document-processing-service..."
+        gcloud run deploy document-processing-service \
+          --image gcr.io/$PROJECT_ID/document-processing-service:$COMMIT_SHA \
+          --region $_REGION \
+          --platform managed \
+          --service-account agenthub-microservices-sa@$PROJECT_ID.iam.gserviceaccount.com \
+          --vpc-connector agenthub-connector \
+          --vpc-egress private-ranges-only \
+          --execution-environment gen2 \
+          --port 8001 \
+          --cpu 0.5 \
+          --memory 512Mi \
+          --min-instances 0 \
+          --max-instances 20 \
+          --no-allow-unauthenticated \
+          --set-env-vars ENVIRONMENT=$_ENVIRONMENT,GCP_PROJECT=$PROJECT_ID
+        echo "✅ document-processing-service deployed"
+    waitFor: ['build-document-processing', 'deploy-conversation-management']
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'deploy-embedding-generation'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🚀 Deploying embedding-generation-service..."
+        gcloud run deploy embedding-generation-service \
+          --image gcr.io/$PROJECT_ID/embedding-generation-service:$COMMIT_SHA \
+          --region $_REGION \
+          --platform managed \
+          --service-account agenthub-microservices-sa@$PROJECT_ID.iam.gserviceaccount.com \
+          --vpc-connector agenthub-connector \
+          --vpc-egress private-ranges-only \
+          --execution-environment gen2 \
+          --port 8002 \
+          --cpu 1 \
+          --memory 1Gi \
+          --min-instances 1 \
+          --max-instances 30 \
+          --no-allow-unauthenticated \
+          --set-env-vars ENVIRONMENT=$_ENVIRONMENT,GCP_PROJECT=$PROJECT_ID,OPENAI_API_KEY=$$OPENAI_API_KEY
+        secretEnv:
+        - OPENAI_API_KEY
+        echo "✅ embedding-generation-service deployed"
+    waitFor: ['build-embedding-generation', 'deploy-document-processing']
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'deploy-rag-query'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🚀 Deploying rag-query-service..."
+        gcloud run deploy rag-query-service \
+          --image gcr.io/$PROJECT_ID/rag-query-service:$COMMIT_SHA \
+          --region $_REGION \
+          --platform managed \
+          --service-account agenthub-microservices-sa@$PROJECT_ID.iam.gserviceaccount.com \
+          --vpc-connector agenthub-connector \
+          --vpc-egress private-ranges-only \
+          --execution-environment gen2 \
+          --port 8111 \
+          --cpu 1 \
+          --memory 1Gi \
+          --min-instances 1 \
+          --max-instances 50 \
+          --no-allow-unauthenticated \
+          --set-env-vars ENVIRONMENT=$_ENVIRONMENT,GCP_PROJECT=$PROJECT_ID
+        echo "✅ rag-query-service deployed"
+    waitFor: ['build-rag-query', 'deploy-embedding-generation']
+
+  # Deploy payment services
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'deploy-payment-intent'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🚀 Deploying payment-intent-service..."
+        gcloud run deploy payment-intent-service \
+          --image gcr.io/$PROJECT_ID/payment-intent-service:$COMMIT_SHA \
+          --region $_REGION \
+          --platform managed \
+          --service-account agenthub-microservices-sa@$PROJECT_ID.iam.gserviceaccount.com \
+          --vpc-connector agenthub-connector \
+          --vpc-egress private-ranges-only \
+          --execution-environment gen2 \
+          --port 8003 \
+          --cpu 0.5 \
+          --memory 512Mi \
+          --min-instances 1 \
+          --max-instances 30 \
+          --no-allow-unauthenticated \
+          --set-env-vars ENVIRONMENT=$_ENVIRONMENT,GCP_PROJECT=$PROJECT_ID
+        echo "✅ payment-intent-service deployed"
+    waitFor: ['build-payment-intent', 'deploy-rag-query']
+
+  # Finally deploy API Gateway (depends on all other services)
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'deploy-api-gateway'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🚀 Deploying api-gateway..."
+        gcloud run deploy api-gateway \
+          --image gcr.io/$PROJECT_ID/api-gateway:$COMMIT_SHA \
+          --region $_REGION \
+          --platform managed \
+          --service-account agenthub-microservices-sa@$PROJECT_ID.iam.gserviceaccount.com \
+          --vpc-connector agenthub-connector \
+          --vpc-egress private-ranges-only \
+          --execution-environment gen2 \
+          --port 8000 \
+          --cpu 1 \
+          --memory 1Gi \
+          --min-instances 2 \
+          --max-instances 100 \
+          --allow-unauthenticated \
+          --set-env-vars ENVIRONMENT=$_ENVIRONMENT,GCP_PROJECT=$PROJECT_ID
+        echo "✅ api-gateway deployed"
+        
+        # Get the API Gateway URL
+        API_GATEWAY_URL=$(gcloud run services describe api-gateway --region $_REGION --format 'value(status.url)')
+        echo "🌐 API Gateway available at: $API_GATEWAY_URL"
+    waitFor: ['deploy-payment-intent']
+
+  # Step 4: Run health checks
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'health-checks'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🏥 Running health checks..."
+        
+        # Wait a bit for services to start
+        sleep 30
+        
+        # Get API Gateway URL
+        API_GATEWAY_URL=$(gcloud run services describe api-gateway --region $_REGION --format 'value(status.url)')
+        
+        # Test API Gateway health
+        if curl -f -s "$API_GATEWAY_URL/health" > /dev/null; then
+          echo "✅ API Gateway health check passed"
+        else
+          echo "❌ API Gateway health check failed"
+          exit 1
+        fi
+        
+        # Test a few key services
+        services=("agent-management-service" "conversation-management-service" "rag-query-service")
+        
+        for service in "${services[@]}"; do
+          SERVICE_URL=$(gcloud run services describe $service --region $_REGION --format 'value(status.url)')
+          if curl -f -s "$SERVICE_URL/health" -H "Authorization: Bearer $(gcloud auth print-access-token)" > /dev/null; then
+            echo "✅ $service health check passed"
+          else
+            echo "⚠️ $service health check failed (may be normal if no health endpoint)"
+          fi
+        done
+        
+        echo "🎉 Deployment completed successfully!"
+        echo "🌐 Your AgentHub API Gateway is available at: $API_GATEWAY_URL"
+    waitFor: ['deploy-api-gateway']
+
+# Secret environment variables
+availableSecrets:
+  secretManager:
+  - versionName: projects/$PROJECT_ID/secrets/openai-api-key/versions/latest
+    env: 'OPENAI_API_KEY'
+
+# Build timeout
+timeout: '3600s'
+
+# Notification on completion
+options:
+  logging: CLOUD_LOGGING_ONLY
+  
+# Build logs bucket
+logsBucket: 'gs://agenthub-build-logs-${PROJECT_ID}'
