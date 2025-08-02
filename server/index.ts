@@ -142,6 +142,35 @@ const simulatedResponses = {
   }
 };
 
+// Add JSON parsing middleware with error handling
+app.use('/api', express.json({ 
+  limit: '10mb',
+  verify: (req, res, buf) => {
+    try {
+      JSON.parse(buf.toString());
+    } catch (err) {
+      res.status(400).json({
+        error: 'Invalid JSON format',
+        code: 'MALFORMED_JSON'
+      });
+      throw new Error('Invalid JSON');
+    }
+  }
+}));
+
+// Content-Type validation middleware
+app.use('/api', (req, res, next) => {
+  if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+    if (req.headers['content-type'] && !req.headers['content-type'].includes('application/json')) {
+      return res.status(400).json({
+        error: 'Content-Type must be application/json',
+        code: 'INVALID_CONTENT_TYPE'
+      });
+    }
+  }
+  next();
+});
+
 // Try to proxy to microservices first, fallback to simulated responses
 app.use('/api', async (req, res, next) => {
   try {
@@ -162,38 +191,168 @@ app.use('/api', async (req, res, next) => {
   const endpoint = req.path;
   
   if (req.method === 'POST' && endpoint === '/agents') {
-    const newAgent = {
-      ...req.body,
-      id: Date.now(),
-      status: 'draft',
-      createdAt: new Date().toISOString(),
-      // Ensure RAG fields are included
-      ragEnabled: req.body.ragEnabled || 'false',
-      ragKnowledgeBase: req.body.ragKnowledgeBase || '',
-      ragDocuments: req.body.ragDocuments || '[]',
-      ragQueryMode: req.body.ragQueryMode || 'hybrid',
-      ragChunkSize: req.body.ragChunkSize || 1000,
-      ragOverlap: req.body.ragOverlap || 200,
-      ragMaxResults: req.body.ragMaxResults || 5,
-      ragConfidenceThreshold: req.body.ragConfidenceThreshold || '0.7'
-    };
-    return res.status(201).json(newAgent);
+    try {
+      const { businessName, businessDescription, businessDomain, industry } = req.body;
+      
+      // Required field validation
+      if (!businessName || typeof businessName !== 'string') {
+        return res.status(400).json({
+          error: 'businessName is required and must be a string',
+          code: 'VALIDATION_ERROR',
+          field: 'businessName'
+        });
+      }
+      
+      if (!businessDescription || typeof businessDescription !== 'string') {
+        return res.status(400).json({
+          error: 'businessDescription is required and must be a string',
+          code: 'VALIDATION_ERROR',
+          field: 'businessDescription'
+        });
+      }
+      
+      if (!industry || typeof industry !== 'string') {
+        return res.status(400).json({
+          error: 'industry is required and must be a string',
+          code: 'VALIDATION_ERROR',
+          field: 'industry'
+        });
+      }
+      
+      // Length validation
+      if (businessName.length > 100) {
+        return res.status(400).json({
+          error: 'businessName must be 100 characters or less',
+          code: 'VALIDATION_ERROR',
+          field: 'businessName'
+        });
+      }
+      
+      if (businessDescription.length > 500) {
+        return res.status(400).json({
+          error: 'businessDescription must be 500 characters or less',
+          code: 'VALIDATION_ERROR',
+          field: 'businessDescription'
+        });
+      }
+      
+      // Sanitize inputs to prevent XSS
+      const sanitizedData = {
+        businessName: businessName.replace(/<[^>]*>/g, ''),
+        businessDescription: businessDescription.replace(/<[^>]*>/g, ''),
+        businessDomain: businessDomain ? businessDomain.replace(/<[^>]*>/g, '') : '',
+        industry: industry.replace(/<[^>]*>/g, '')
+      };
+      
+      // Create agent with sanitized data
+      const newAgent = {
+        ...sanitizedData,
+        id: Date.now(),
+        status: 'draft',
+        createdAt: new Date().toISOString(),
+        llmModel: req.body.llmModel || 'gpt-4o',
+        interfaceType: req.body.interfaceType || 'webchat',
+        // Ensure RAG fields are included
+        ragEnabled: req.body.ragEnabled || 'false',
+        ragKnowledgeBase: req.body.ragKnowledgeBase || '',
+        ragDocuments: req.body.ragDocuments || '[]',
+        ragQueryMode: req.body.ragQueryMode || 'hybrid',
+        ragChunkSize: req.body.ragChunkSize || 1000,
+        ragOverlap: req.body.ragOverlap || 200,
+        ragMaxResults: req.body.ragMaxResults || 5,
+        ragConfidenceThreshold: req.body.ragConfidenceThreshold || '0.7'
+      };
+      
+      return res.status(201).json(newAgent);
+    } catch (error) {
+      console.error('Agent creation error:', error);
+      return res.status(500).json({
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR'
+      });
+    }
   }
   
   if (req.method === 'POST' && endpoint === '/conversations') {
-    const newConversation = {
-      ...req.body,
-      id: Date.now(),
-      createdAt: new Date().toISOString()
-    };
-    return res.status(201).json(newConversation);
+    try {
+      const { agentId, userId, message } = req.body;
+      
+      // Basic validation for conversations
+      if (!agentId || (typeof agentId !== 'number' && typeof agentId !== 'string')) {
+        return res.status(400).json({
+          error: 'agentId is required and must be a number or string',
+          code: 'VALIDATION_ERROR',
+          field: 'agentId'
+        });
+      }
+      
+      // Check if agentId can be converted to number if it's a string
+      if (typeof agentId === 'string' && isNaN(Number(agentId))) {
+        return res.status(400).json({
+          error: 'agentId must be a valid number',
+          code: 'VALIDATION_ERROR',
+          field: 'agentId'
+        });
+      }
+      
+      if (!message || typeof message !== 'string' || message.trim().length === 0) {
+        return res.status(400).json({
+          error: 'message is required and must be a non-empty string',
+          code: 'VALIDATION_ERROR',
+          field: 'message'
+        });
+      }
+      
+      const newConversation = {
+        id: Date.now(),
+        agentId,
+        userId: userId || 'anonymous',
+        message: message.replace(/<[^>]*>/g, ''), // Sanitize XSS
+        createdAt: new Date().toISOString()
+      };
+      
+      return res.status(201).json(newConversation);
+    } catch (error) {
+      console.error('Conversation creation error:', error);
+      return res.status(500).json({
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR'
+      });
+    }
   }
   
   if (req.method === 'POST' && endpoint === '/rag/query') {
-    return res.json({
-      ...simulatedResponses['/api/rag/query'],
-      query: req.body.query || 'test query'
-    });
+    try {
+      const { query, agentId } = req.body;
+      
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({
+          error: 'query is required and must be a string',
+          code: 'VALIDATION_ERROR',
+          field: 'query'
+        });
+      }
+      
+      if (!agentId || typeof agentId !== 'number') {
+        return res.status(400).json({
+          error: 'agentId is required and must be a number',
+          code: 'VALIDATION_ERROR',
+          field: 'agentId'
+        });
+      }
+      
+      return res.json({
+        ...simulatedResponses['/api/rag/query'],
+        query: query.replace(/<[^>]*>/g, ''), // Sanitize XSS
+        agentId
+      });
+    } catch (error) {
+      console.error('RAG query error:', error);
+      return res.status(500).json({
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR'
+      });
+    }
   }
   
   const apiKey = `/api${endpoint}` as keyof typeof simulatedResponses;
@@ -201,11 +360,22 @@ app.use('/api', async (req, res, next) => {
     return res.json(simulatedResponses[apiKey]);
   }
   
-  // Default response for unmapped endpoints
-  res.status(200).json({ 
-    message: `Microservice endpoint ${endpoint} simulated`,
-    microservices_mode: 'simulated',
-    timestamp: new Date().toISOString()
+  // Check for microservice health endpoints
+  if (endpoint.includes('/health')) {
+    return res.json({
+      status: 'healthy',
+      service: endpoint.split('/')[1] || 'unknown',
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  // Return 404 for unknown endpoints instead of 200
+  return res.status(404).json({
+    error: 'Endpoint not found',
+    code: 'NOT_FOUND',
+    endpoint: endpoint,
+    method: req.method,
+    message: 'This API endpoint does not exist'
   });
 });
 
