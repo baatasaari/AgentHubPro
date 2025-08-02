@@ -316,27 +316,28 @@ database_maintenance() {
     fi
 }
 
-# Redis maintenance
-redis_maintenance() {
-    log_info "Performing Redis maintenance..."
+# Memcached maintenance
+memcached_maintenance() {
+    log_info "Performing Memcached maintenance..."
     
-    local redis_status=$(gcloud redis instances describe "$REDIS_INSTANCE" \
-        --region="$REGION" \
-        --format="value(state)" 2>/dev/null || echo "NOT_FOUND")
+    local memcached_status=$(gcloud compute instances describe "$MEMCACHED_INSTANCE" \
+        --zone="$REGION-a" \
+        --format="value(status)" 2>/dev/null || echo "NOT_FOUND")
     
-    if [ "$redis_status" = "READY" ]; then
-        log_success "Redis $REDIS_INSTANCE is ready"
+    if [ "$memcached_status" = "RUNNING" ]; then
+        log_success "Memcached $MEMCACHED_INSTANCE is running"
         
-        # Get Redis metrics
-        log_info "Redis memory usage:"
-        gcloud monitoring timeseries list \
-            --filter="metric.type=\"redis.googleapis.com/stats/memory/usage_ratio\"" \
-            --interval-start-time="$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ)" \
-            --interval-end-time="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --format="table(points[].value.doubleValue)" \
-            --limit=10
+        # Check Memcached service status
+        local memcached_ip=$(gcloud compute instances describe "$MEMCACHED_INSTANCE" \
+            --zone="$REGION-a" \
+            --format="value(networkInterfaces[0].networkIP)" 2>/dev/null)
+        
+        if [ -n "$memcached_ip" ]; then
+            log_info "Memcached instance IP: $memcached_ip:11211"
+            log_info "Memcached cache ready for connections"
+        fi
     else
-        log_error "Redis $REDIS_INSTANCE status: $redis_status"
+        log_error "Memcached $MEMCACHED_INSTANCE status: $memcached_status"
     fi
 }
 
@@ -387,7 +388,7 @@ generate_system_report() {
   "unhealthy_services": [$(printf '"%s",' "${unhealthy_services[@]}" | sed 's/,$//')]$([ ${#unhealthy_services[@]} -gt 0 ] || echo ''),
   "infrastructure": {
     "database_status": "$(gcloud sql instances describe "$DATABASE_INSTANCE" --format="value(state)" 2>/dev/null || echo "NOT_FOUND")",
-    "redis_status": "$(gcloud redis instances describe "$REDIS_INSTANCE" --region="$REGION" --format="value(state)" 2>/dev/null || echo "NOT_FOUND")"
+    "memcached_status": "$(gcloud compute instances describe "$MEMCACHED_INSTANCE" --zone="$REGION-a" --format="value(status)" 2>/dev/null || echo "NOT_FOUND")"
   }
 }
 EOF
@@ -418,7 +419,7 @@ show_usage() {
     echo "  deploy <service> <version>  Deploy new service version"
     echo "  rollback <service>          Rollback service to previous version"
     echo "  database                    Database maintenance"
-    echo "  redis                       Redis maintenance"
+    echo "  memcached                   Memcached maintenance"
     echo "  report                      Generate comprehensive system report"
     echo "  continuous                  Start continuous monitoring (every 60s)"
     echo ""
@@ -497,8 +498,8 @@ case "${1:-monitor}" in
     "database")
         database_maintenance
         ;;
-    "redis")
-        redis_maintenance
+    "memcached")
+        memcached_maintenance
         ;;
     "report")
         generate_system_report

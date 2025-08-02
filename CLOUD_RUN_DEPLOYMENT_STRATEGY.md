@@ -9,7 +9,7 @@ Deploy AgentHub's 29 microservices architecture on Google Cloud Run with individ
 - **29 Individual Cloud Run Services** - Each microservice as separate Cloud Run service
 - **API Gateway Service** - NGINX-based routing and load balancing
 - **Service-to-Service Communication** - Private networking with authentication
-- **Shared Resources** - Cloud SQL, Redis, Cloud Storage
+- **Shared Resources** - BigQuery, Memcached, Cloud Storage
 
 ### 2. Domain-Based Service Organization
 

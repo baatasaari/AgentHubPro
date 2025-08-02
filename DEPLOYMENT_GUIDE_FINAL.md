@@ -324,7 +324,7 @@ After following this guide, you will have:
 ✅ **29 Microservices** running on Google Cloud Run
 ✅ **Secure Internal Communication** with IAM authentication  
 ✅ **High-Availability Database** with automated backups
-✅ **Redis Caching** for performance optimization
+✅ **Memcached Caching** for performance optimization
 ✅ **Complete Monitoring** with health checks and metrics
 ✅ **Auto-Scaling** based on traffic and load
 ✅ **Production Security** with VPC-only internal access

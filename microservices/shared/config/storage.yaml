@@ -66,15 +66,14 @@ postgresql:
 # Caching Configuration
 cache:
   enabled: "${CACHE_ENABLED:true}"
-  type: "${CACHE_TYPE:memory}"  # memory, redis
+  type: "${CACHE_TYPE:memory}"  # memory, memcached
   ttl_seconds: "${CACHE_TTL:300}"
   
-  # Redis settings (if using Redis cache)
-  redis:
-    host: "${REDIS_HOST:localhost}"
-    port: "${REDIS_PORT:6379}"
-    password: "${REDIS_PASSWORD:}"
-    db: "${REDIS_DB:0}"
+  # Memcached settings (if using Memcached cache)
+  memcached:
+    servers: "${MEMCACHED_SERVERS:localhost:11211}"
+    connection_timeout: "${MEMCACHED_TIMEOUT:5}"
+    max_connections: "${MEMCACHED_MAX_CONN:10}"
     
   # Environment-specific cache configs
   development:
@@ -89,7 +88,7 @@ cache:
     
   production:
     enabled: true
-    type: "${PRODUCTION_CACHE_TYPE:redis}"
+    type: "${PRODUCTION_CACHE_TYPE:memcached}"
     ttl_seconds: 3600
 
 # Data Retention Policies

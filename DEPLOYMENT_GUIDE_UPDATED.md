@@ -125,7 +125,7 @@ PROJECT_ID=$PROJECT_ID ./scripts/provision-infrastructure.sh
    - Cloud Build API (CI/CD pipeline)
    - Container Registry API (Docker images)
    - Cloud SQL API (PostgreSQL database)
-   - Redis API (caching layer)
+   - Memcached API (caching layer)
    - VPC Access API (internal networking)
    - Secret Manager API (credential management)
    - IAM API (service accounts)
@@ -164,12 +164,12 @@ PROJECT_ID=$PROJECT_ID ./scripts/provision-infrastructure.sh
    # Network: Private IP only (no public access)
    ```
 
-5. **Creates Redis Cache** (2-3 minutes)
+5. **Creates Memcached Cache** (2-3 minutes)
    ```bash
-   # High-availability Redis instance
-   # Instance: agenthub-redis-prod
-   # Version: Redis 7.0
-   # Tier: Standard HA (4GB memory)
+   # High-performance Memcached instance
+   # Instance: agenthub-memcached-prod
+   # Service: Memcached 1.6
+   # Memory: 4GB dedicated cache
    # Network: Private network access only
    ```
 
@@ -192,7 +192,7 @@ PROJECT_ID=$PROJECT_ID ./scripts/provision-infrastructure.sh
    export VPC_NETWORK=agenthub-network
    export VPC_CONNECTOR=agenthub-connector
    export DATABASE_INSTANCE=agenthub-postgres-prod
-   export REDIS_INSTANCE=agenthub-redis-prod
+   export MEMCACHED_INSTANCE=agenthub-memcached-prod
    export BUCKET_SUFFIX=generated-suffix
    ```
 
@@ -209,9 +209,9 @@ echo "your-actual-openai-api-key" | gcloud secrets versions add openai-api-key -
 export DB_CONNECTION_NAME=$(gcloud sql instances describe $DATABASE_INSTANCE --format="value(connectionName)")
 echo "postgresql://postgres:yourpassword@localhost/agenthub?host=/cloudsql/$DB_CONNECTION_NAME" | gcloud secrets versions add database-url --data-file=-
 
-# Redis URL is auto-generated during Redis creation
-export REDIS_HOST=$(gcloud redis instances describe $REDIS_INSTANCE --region=$REGION --format="value(host)")
-echo "redis://$REDIS_HOST:6379" | gcloud secrets versions add redis-url --data-file=-
+# Memcached servers list is auto-generated during instance creation
+export MEMCACHED_IP=$(gcloud compute instances describe $MEMCACHED_INSTANCE --zone=$REGION-a --format="value(networkInterfaces[0].networkIP)")
+echo "$MEMCACHED_IP:11211" | gcloud secrets versions add memcached-servers --data-file=-
 
 # Generate and store JWT secret
 openssl rand -base64 32 | gcloud secrets versions add jwt-secret --data-file=-
@@ -484,7 +484,7 @@ payment-intent-service             HEALTHY         110ms
 
 Overall System Health: 96% (28/29 services healthy)
 Database Status: HEALTHY
-Redis Status: HEALTHY
+Memcached Status: RUNNING
 ```
 
 ### Step 2: Set Up Continuous Monitoring
@@ -729,7 +729,7 @@ Domain Services (12 services):    $350-700
 Analytics Services (4 services):  $100-200
 Infrastructure Services (7 services): $120-240
 Database (Cloud SQL HA):          $200-400
-Redis Cache:                      $80-150
+Memcached Cache:                  $40-90
 Storage (all buckets):           $50-100
 Networking:                      $30-60
 -------------------------------------------------

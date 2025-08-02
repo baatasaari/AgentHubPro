@@ -38,7 +38,7 @@ This creates:
 - ✅ VPC network with private subnets
 - ✅ Service accounts with IAM roles
 - ✅ Cloud SQL PostgreSQL (Regional HA)
-- ✅ Redis instance for caching
+- ✅ Memcached instance for caching
 - ✅ Cloud Storage buckets
 - ✅ Secret Manager setup
 
@@ -207,7 +207,7 @@ Comprehensive monitoring system:
 ### Cost Optimization Features
 - **Smart Auto-scaling** - Scale to zero for low-traffic services
 - **Resource Right-sizing** - CPU/memory optimized per service
-- **Efficient Caching** - Redis for reduced compute costs
+- **Efficient Caching** - Memcached for reduced compute costs
 - **Regional Deployment** - Single region reduces data transfer costs
 
 ## 🛠️ Development Workflow

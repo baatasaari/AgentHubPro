@@ -77,7 +77,7 @@ class OptimizedDatabaseService {
 **Current**: No caching layer
 **Optimization**: Multi-level caching system
 
-**Level 1: In-Memory Cache** (Redis)
+**Level 1: In-Memory Cache** (Memcached)
 - Agent configurations: 5-minute TTL
 - RAG responses: 1-hour TTL for common queries
 - Usage statistics: 30-second TTL
@@ -364,7 +364,7 @@ authentication:
 
 ### Phase 2: Performance (3-4 weeks)
 1. Service consolidation for high-traffic paths
-2. Redis caching layer implementation
+2. Memcached caching layer implementation
 3. Load balancing algorithm optimization
 4. Database query optimization
 
