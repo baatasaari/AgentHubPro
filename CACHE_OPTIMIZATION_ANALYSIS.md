@@ -33,7 +33,7 @@
 ## Migration Impact
 
 ### Cost Savings:
-- **Before**: Redis HA 4GB = $80-150/month
+- **Before**: Redis HA 4GB = $80-150/month (REMOVED)
 - **After**: Memcached 4GB = $40-90/month  
 - **Savings**: $40-60/month ($480-720/year)
 
@@ -43,7 +43,7 @@
 - Better memory utilization for actual cache data
 
 ### Simplified Architecture:
-- Remove Redis-specific complexity
+- ✅ Removed Redis-specific complexity
 - Easier maintenance and monitoring
 - Standard Memcached protocol across all services
 
