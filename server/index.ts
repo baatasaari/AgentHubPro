@@ -118,6 +118,34 @@ const simulatedResponses = {
       "createdAt": "2024-11-20T00:00:00.000Z"
     }
   ],
+  '/api/analytics/dashboard': {
+    "totalAgents": 8,
+    "activeAgents": 6,
+    "totalConversations": 127,
+    "todayConversations": 12,
+    "totalRevenue": 45670,
+    "monthlyRevenue": 12450,
+    "averageResponseTime": 58,
+    "customerSatisfaction": 4.7,
+    "industryBreakdown": {
+      "healthcare": 3,
+      "retail": 2,
+      "finance": 2,
+      "technology": 1
+    }
+  },
+  '/api/analytics/customers': {
+    "totalCustomers": 234,
+    "activeCustomers": 187,
+    "newCustomers": 23,
+    "churnRate": 2.1
+  },
+  '/api/analytics/performance': {
+    "systemHealth": "excellent",
+    "avgResponseTime": 58,
+    "successRate": 99.9,
+    "errorRate": 0.1
+  },
   '/api/usage/stats': {
     "totalConversations": 127,
     "totalCost": 1.247,
