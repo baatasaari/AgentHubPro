@@ -653,3 +653,4 @@ class LatencyOptimizer extends EventEmitter {
 }
 
 module.exports = LatencyOptimizer;
+module.exports.LatencyOptimizer = LatencyOptimizer;

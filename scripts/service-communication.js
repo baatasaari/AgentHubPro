@@ -433,3 +433,4 @@ class ServiceCommunicator {
 }
 
 module.exports = ServiceCommunicator;
+module.exports.ServiceCommunicator = ServiceCommunicator;

@@ -586,6 +586,7 @@ service AnalyticsCalculationService {
 }
 
 module.exports = GRPCCommunicationManager;
+module.exports.GRPCCommunicationManager = GRPCCommunicationManager;
 
 // Example usage and testing
 if (require.main === module) {

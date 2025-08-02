@@ -36,6 +36,9 @@ sudo apt-get update && sudo apt-get install docker.io
 # macOS:
 brew install docker
 
+# Install Node.js dependencies for communication libraries
+npm install @grpc/grpc-js @grpc/proto-loader opossum
+
 # Authenticate with Google Cloud
 gcloud auth login
 gcloud auth application-default login
