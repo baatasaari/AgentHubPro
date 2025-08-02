@@ -189,16 +189,45 @@ bq mk --location=$REGION --dataset \
 
 log_success "BigQuery datasets created"
 
-# Create Redis instance
-log_info "Creating Redis instance for caching..."
-gcloud redis instances create agenthub-redis-$ENVIRONMENT \
-    --size=4 \
-    --region=$REGION \
-    --network=agenthub-network \
-    --redis-version=redis_7_0 \
-    --tier=standard-ha
+# Create Memcached instance for high-performance caching
+log_info "Creating Memcached instance for caching..."
 
-log_success "Redis instance created"
+# Create startup script for Memcached
+cat > /tmp/memcached-startup.sh <<'EOF'
+#!/bin/bash
+apt-get update
+apt-get install -y memcached
+
+# Configure Memcached for 4GB cache
+sed -i 's/-m 64/-m 4096/' /etc/memcached.conf
+sed -i 's/127.0.0.1/0.0.0.0/' /etc/memcached.conf
+
+systemctl restart memcached
+systemctl enable memcached
+
+# Basic firewall rule for Memcached port
+ufw allow from 10.1.0.0/16 to any port 11211
+
+echo "Memcached configuration complete" | logger
+EOF
+
+gcloud compute instances create agenthub-memcached-$ENVIRONMENT \
+    --zone=$REGION-a \
+    --machine-type=e2-standard-2 \
+    --network-interface=subnet=agenthub-subnet,no-address \
+    --image-family=ubuntu-2204-lts \
+    --image-project=ubuntu-os-cloud \
+    --boot-disk-size=20GB \
+    --boot-disk-type=pd-standard \
+    --metadata-from-file startup-script=/tmp/memcached-startup.sh \
+    --service-account=agenthub-microservices@$PROJECT_ID.iam.gserviceaccount.com \
+    --scopes=cloud-platform \
+    --tags=memcached-server,internal-cache
+
+# Clean up temporary file
+rm /tmp/memcached-startup.sh
+
+log_success "Memcached instance created"
 
 # Create Cloud Storage buckets
 log_info "Creating Cloud Storage buckets..."
@@ -238,7 +267,7 @@ log_info "Creating secrets in Secret Manager..."
 secrets=(
     "openai-api-key"
     "bigquery-credentials"
-    "redis-url"
+    "memcached-servers"
     "jwt-secret"
 )
 
@@ -307,7 +336,7 @@ export VPC_NETWORK=agenthub-network
 export VPC_CONNECTOR=agenthub-connector
 export BIGQUERY_DATASET=agenthub_production
 export BIGQUERY_PROJECT=$PROJECT_ID
-export REDIS_INSTANCE=agenthub-redis-$ENVIRONMENT
+export MEMCACHED_INSTANCE=agenthub-memcached-$ENVIRONMENT
 export BUCKET_SUFFIX=$bucket_suffix
 EOF
 

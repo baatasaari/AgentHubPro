@@ -77,7 +77,7 @@ PROJECT_ID=$PROJECT_ID ./scripts/provision-infrastructure.sh
 **Creates:**
 - VPC network with private subnet (10.1.0.0/16)
 - BigQuery datasets for analytics and data storage
-- Redis cache (HA, 4GB memory)
+- Memcached cache instance (4GB memory, optimized for performance)
 - 10 service accounts with IAM roles
 - 5 Cloud Storage buckets
 - Secret Manager secrets
@@ -261,9 +261,9 @@ gcloud run services update-traffic SERVICE_NAME --to-latest --region=$REGION
 | Domain + Analytics Services | $450-900 |
 | Infrastructure Services | $240-480 |
 | BigQuery Data Warehouse | $100-300 |
-| Redis Cache | $80-150 |
+| Memcached Cache | $40-90 |
 | Storage + Networking | $80-160 |
-| **Total Monthly Cost** | **$1,500-3,090** |
+| **Total Monthly Cost** | **$1,460-3,030** |
 
 ### Cost Optimization
 

@@ -394,7 +394,7 @@ resource "google_project_iam_member" "microservices_permissions" {
   for_each = toset([
     "roles/bigquery.dataEditor",
     "roles/bigquery.jobUser",
-    "roles/redis.editor",
+    "roles/compute.instanceAdmin.v1",
     "roles/storage.objectAdmin",
     "roles/secretmanager.secretAccessor",
     "roles/monitoring.metricWriter",
@@ -625,20 +625,53 @@ resource "google_bigquery_dataset" "agenthub_streaming" {
   ]
 }
 
-# Redis instance for caching
-resource "google_redis_instance" "cache" {
-  name           = "agenthub-redis-${var.environment}"
-  tier           = "STANDARD_HA"
-  memory_size_gb = 4
-  region         = var.region
-  project        = var.project_id
+# Memcached instance for high-performance caching
+resource "google_compute_instance" "memcached" {
+  name         = "agenthub-memcached-${var.environment}"
+  machine_type = "e2-standard-2"  # 2 vCPUs, 8GB RAM
+  zone         = "${var.region}-a"
+  project      = var.project_id
 
-  authorized_network = google_compute_network.microservices_network.id
-  redis_version      = "REDIS_7_0"
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+      size  = 20
+    }
+  }
+
+  network_interface {
+    network    = google_compute_network.microservices_network.id
+    subnetwork = google_compute_subnetwork.microservices_subnet.id
+    # No external IP - internal only
+  }
+
+  metadata_startup_script = <<-EOT
+    #!/bin/bash
+    apt-get update
+    apt-get install -y memcached
+    
+    # Configure Memcached for 4GB cache
+    sed -i 's/-m 64/-m 4096/' /etc/memcached.conf
+    sed -i 's/127.0.0.1/0.0.0.0/' /etc/memcached.conf
+    
+    systemctl restart memcached
+    systemctl enable memcached
+    
+    # Basic firewall rule for Memcached port
+    ufw allow from 10.1.0.0/16 to any port 11211
+  EOT
+
+  service_account {
+    email  = google_service_account.microservices_sa.email
+    scopes = ["cloud-platform"]
+  }
+
+  tags = ["memcached-server", "internal-cache"]
 
   depends_on = [
     google_project_service.required_apis,
-    google_compute_network.microservices_network
+    google_compute_network.microservices_network,
+    google_compute_subnetwork.microservices_subnet
   ]
 }
 
@@ -698,9 +731,9 @@ output "bigquery_datasets" {
   }
 }
 
-output "redis_host" {
-  description = "Redis instance host"
-  value       = google_redis_instance.cache.host
+output "memcached_host" {
+  description = "Memcached instance internal IP"
+  value       = google_compute_instance.memcached.network_interface[0].network_ip
 }
 
 output "storage_buckets" {
