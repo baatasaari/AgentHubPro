@@ -1059,12 +1059,12 @@ export class BigQueryStorage implements IStorage {
 
 // Use MemStorage for development
 // Storage factory - automatically selects persistent storage in production
-function createStorage(): IStorage {
+async function createStorage(): Promise<IStorage> {
   // Check for production environment variables
   if (process.env.DATABASE_URL || process.env.GOOGLE_CLOUD_PROJECT) {
     try {
-      // Dynamic import to avoid circular dependencies
-      const { persistentStorage } = require('./persistent-storage.js');
+      // Dynamic ES6 import to avoid circular dependencies
+      const { persistentStorage } = await import('./persistent-storage.js');
       console.log('🗄️  Using PersistentStorage (Production Mode)');
       return persistentStorage;
     } catch (error) {
@@ -1077,4 +1077,4 @@ function createStorage(): IStorage {
 }
 
 // Create the global storage instance with automatic production/development detection
-export const storage = createStorage();
+export const storage = await createStorage();
