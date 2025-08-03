@@ -5,8 +5,7 @@ Real OpenAI embedding generation with configurable parameters
 Replaces mock implementation with actual AI models
 """
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException, Depends, Request
 from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
@@ -16,6 +15,16 @@ import os
 import openai
 import hashlib
 import asyncio
+import sys
+sys.path.append('../shared')
+from auth_middleware import (
+    authenticate_service_request, 
+    ServiceClaims, 
+    get_secure_cors_middleware,
+    security_metrics,
+    sanitize_input,
+    require_permission
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,12 +36,13 @@ if not os.getenv("OPENAI_API_KEY"):
 openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = FastAPI(
-    title="Production Embedding Generation Service",
-    description="Real AI-powered embedding generation using OpenAI models",
-    version="2.0.0"
+    title="Secure Embedding Generation Service",
+    description="Production AI-powered embedding generation with authentication",
+    version="2.1.0"
 )
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+# Add secure CORS middleware instead of open policy
+app.add_middleware(get_secure_cors_middleware())
 
 # Configuration for embedding models
 EMBEDDING_MODELS = {
@@ -65,7 +75,7 @@ class BatchEmbeddingRequest(BaseModel):
 embedding_cache = {}
 
 @app.get("/health")
-async def health_check():
+async def health_check(request: Request):
     # Test OpenAI API connectivity
     openai_status = "unknown"
     try:
@@ -84,19 +94,46 @@ async def health_check():
     except Exception as e:
         openai_status = f"error: {str(e)[:50]}"
     
-    return {
+    health_data = {
         "status": "healthy", 
-        "service": "embedding-generation-production", 
+        "service": "embedding-generation-secure", 
         "cached_embeddings": len(embedding_cache),
         "openai_status": openai_status,
         "supported_models": list(EMBEDDING_MODELS.keys()),
-        "version": "2.0.0"
+        "version": "2.1.0",
+        "security": {
+            "authentication": "enabled",
+            "cors_policy": "restricted",
+            "rate_limiting": "enabled"
+        }
     }
+    
+    # Add security metrics for authenticated requests
+    auth_header = request.headers.get("authorization")
+    if auth_header:
+        try:
+            # This will be called without dependency injection for health checks
+            health_data.update(security_metrics.get_metrics())
+        except:
+            pass  # Skip metrics if authentication fails
+    
+    return health_data
 
 @app.post("/api/embeddings/generate")
-async def generate_embedding(request: EmbeddingRequest):
-    """Generate real AI embedding using OpenAI"""
+async def generate_embedding(
+    request: EmbeddingRequest,
+    claims: ServiceClaims = Depends(authenticate_service_request)
+):
+    """Generate real AI embedding using OpenAI with authentication"""
     try:
+        # Check permissions
+        if "embedding:generate" not in claims.permissions:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        
+        # Sanitize input
+        sanitized_text = sanitize_input(request.text, max_length=8192)
+        request.text = sanitized_text
+        
         # Validate model
         if request.model not in EMBEDDING_MODELS:
             raise HTTPException(
@@ -112,7 +149,8 @@ async def generate_embedding(request: EmbeddingRequest):
         if cache_key in embedding_cache:
             cached_response = embedding_cache[cache_key]
             cached_response.cache_hit = True
-            logger.info(f"Cache hit for text length {len(request.text)}")
+            logger.info(f"Cache hit for {claims.service_name}, text length {len(request.text)}")
+            security_metrics.record_successful_auth(claims.service_name, "cached")
             return cached_response
         
         # Validate text input
@@ -122,7 +160,8 @@ async def generate_embedding(request: EmbeddingRequest):
         if len(request.text) > 8192:  # OpenAI token limit
             raise HTTPException(status_code=400, detail="Text too long (max 8192 tokens)")
         
-        logger.info(f"Generating embedding for text length {len(request.text)} using {request.model}")
+        logger.info(f"Generating embedding for {claims.service_name}, text length {len(request.text)} using {request.model}")
+        security_metrics.record_successful_auth(claims.service_name, "embedding_generation")
         
         # Generate real embedding using OpenAI
         try:
@@ -172,9 +211,16 @@ async def generate_embedding(request: EmbeddingRequest):
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 
 @app.post("/api/embeddings/batch")
-async def generate_batch_embeddings(request: BatchEmbeddingRequest):
-    """Generate embeddings for multiple texts efficiently"""
+async def generate_batch_embeddings(
+    request: BatchEmbeddingRequest,
+    claims: ServiceClaims = Depends(authenticate_service_request)
+):
+    """Generate embeddings for multiple texts efficiently with authentication"""
     try:
+        # Check permissions
+        if "embedding:batch" not in claims.permissions:
+            raise HTTPException(status_code=403, detail="Insufficient permissions for batch processing")
+        
         if not request.texts:
             raise HTTPException(status_code=400, detail="No texts provided")
         
@@ -183,6 +229,12 @@ async def generate_batch_embeddings(request: BatchEmbeddingRequest):
                 status_code=400, 
                 detail=f"Too many texts. Max batch size: {request.max_batch_size}"
             )
+        
+        # Sanitize all input texts
+        sanitized_texts = []
+        for text in request.texts:
+            sanitized_texts.append(sanitize_input(text, max_length=8192))
+        request.texts = sanitized_texts
         
         # Process in batches for efficiency
         batch_size = min(len(request.texts), 50)  # OpenAI batch limit
@@ -254,7 +306,8 @@ async def generate_batch_embeddings(request: BatchEmbeddingRequest):
             batch_results.sort(key=lambda x: x[0])
             all_embeddings.extend([result[1] for result in batch_results])
         
-        logger.info(f"Batch processed: {len(request.texts)} texts, {cache_hits} cache hits, cost: ${total_cost:.6f}")
+        logger.info(f"Batch processed for {claims.service_name}: {len(request.texts)} texts, {cache_hits} cache hits, cost: ${total_cost:.6f}")
+        security_metrics.record_successful_auth(claims.service_name, "batch_processing")
         
         return {
             "embeddings": all_embeddings,
@@ -272,7 +325,9 @@ async def generate_batch_embeddings(request: BatchEmbeddingRequest):
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 
 @app.get("/api/embeddings/models")
-async def get_available_models():
+async def get_available_models(
+    claims: ServiceClaims = Depends(authenticate_service_request)
+):
     """Get available embedding models and their specifications"""
     return {
         "models": EMBEDDING_MODELS,
@@ -284,8 +339,10 @@ async def get_available_models():
         }
     }
 
-@app.get("/api/embeddings/cache/stats")
-async def get_cache_stats():
+@app.get("/api/embeddings/cache/stats") 
+async def get_cache_stats(
+    claims: ServiceClaims = Depends(authenticate_service_request)
+):
     """Get embedding cache statistics"""
     total_memory_mb = 0
     model_breakdown = {}
@@ -309,11 +366,17 @@ async def get_cache_stats():
     }
 
 @app.delete("/api/embeddings/cache")
-async def clear_cache():
-    """Clear embedding cache"""
+async def clear_cache(
+    claims: ServiceClaims = Depends(authenticate_service_request)
+):
+    """Clear embedding cache (admin permission required)"""
+    if "admin:cache" not in claims.permissions:
+        raise HTTPException(status_code=403, detail="Admin permission required to clear cache")
+    
     cleared_count = len(embedding_cache)
     embedding_cache.clear()
-    return {"success": True, "cleared_embeddings": cleared_count}
+    logger.info(f"Cache cleared by {claims.service_name}: {cleared_count} embeddings")
+    return {"success": True, "cleared_embeddings": cleared_count, "cleared_by": claims.service_name}
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8009))

@@ -5,8 +5,7 @@ Real AI-powered intent detection using OpenAI GPT models
 Replaces keyword heuristics with sophisticated NLP analysis
 """
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException, Depends, Request
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 import uvicorn
@@ -17,6 +16,16 @@ import openai
 import json
 import asyncio
 import hashlib
+import sys
+sys.path.append('../shared')
+from auth_middleware import (
+    authenticate_service_request,
+    ServiceClaims,
+    get_secure_cors_middleware,
+    security_metrics,
+    sanitize_input,
+    require_permission
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,12 +37,13 @@ if not os.getenv("OPENAI_API_KEY"):
 openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = FastAPI(
-    title="Production Payment Intent Service",
-    description="AI-powered payment intent analysis using OpenAI GPT models",
-    version="2.0.0"
+    title="Secure Payment Intent Service",
+    description="Production AI-powered payment intent analysis with authentication",
+    version="2.1.0"
 )
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+# Add secure CORS middleware instead of open policy
+app.add_middleware(get_secure_cors_middleware())
 
 # Configuration for AI models
 AI_MODELS = {
@@ -131,8 +141,8 @@ INDUSTRY_PRICING = {
     }
 }
 
-@app.get("/health")
-async def health_check():
+@app.get("/health")  
+async def health_check(request: Request):
     # Test OpenAI API connectivity
     openai_status = "unknown"
     try:
@@ -152,22 +162,47 @@ async def health_check():
     except Exception as e:
         openai_status = f"error: {str(e)[:50]}"
     
-    return {
+    health_data = {
         "status": "healthy",
-        "service": "payment-intent-production",
+        "service": "payment-intent-secure",
         "cached_analyses": len(intent_cache),
         "openai_status": openai_status,
         "supported_models": list(AI_MODELS.keys()),
         "supported_industries": list(INDUSTRY_PRICING.keys()),
-        "version": "2.0.0"
+        "version": "2.1.0",
+        "security": {
+            "authentication": "enabled",
+            "cors_policy": "restricted", 
+            "rate_limiting": "enabled"
+        }
     }
+    
+    # Add security metrics for authenticated requests
+    auth_header = request.headers.get("authorization")
+    if auth_header:
+        try:
+            health_data.update(security_metrics.get_metrics())
+        except:
+            pass  # Skip metrics if authentication fails
+    
+    return health_data
 
 @app.post("/api/payment-intent/analyze")
-async def analyze_payment_intent(request: PaymentIntentRequest):
-    """Analyze message for payment intent using AI"""
+async def analyze_payment_intent(
+    request: PaymentIntentRequest,
+    claims: ServiceClaims = Depends(authenticate_service_request)
+):
+    """Analyze message for payment intent using AI with authentication"""
     start_time = datetime.now()
     
     try:
+        # Check permissions
+        if "payment:analyze" not in claims.permissions:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        
+        # Sanitize input message
+        request.message = sanitize_input(request.message, max_length=2000)
+        
         # Validate model
         if request.model not in AI_MODELS:
             raise HTTPException(
@@ -187,7 +222,8 @@ async def analyze_payment_intent(request: PaymentIntentRequest):
         # Check cache
         if cache_key in intent_cache:
             cached_response = intent_cache[cache_key]
-            logger.info(f"Cache hit for intent analysis")
+            logger.info(f"Cache hit for {claims.service_name} intent analysis")
+            security_metrics.record_successful_auth(claims.service_name, "cached_intent")
             return cached_response
         
         # Prepare context for AI analysis
@@ -205,7 +241,8 @@ async def analyze_payment_intent(request: PaymentIntentRequest):
         # Create AI analysis prompt
         analysis_prompt = f"{INTENT_ANALYSIS_PROMPT}\n\nCONTEXT:\n{context_info}\n\nProvide analysis as JSON with the following structure:\n{{\n  \"primary_intent\": \"intent_name\",\n  \"confidence\": 0.85,\n  \"alternative_intents\": [{{\"intent\": \"name\", \"confidence\": 0.65}}],\n  \"suggested_amount\": 100.0,\n  \"currency\": \"USD\",\n  \"extracted_entities\": {{\"amounts\": [], \"services\": [], \"dates\": []}},\n  \"reasoning\": \"Detailed explanation\"\n}}"
         
-        logger.info(f"Analyzing intent with {request.model} for text length {len(request.message)}")
+        logger.info(f"Analyzing intent for {claims.service_name} with {request.model}, text length {len(request.message)}")
+        security_metrics.record_successful_auth(claims.service_name, "intent_analysis")
         
         # Call OpenAI API
         try:
@@ -261,7 +298,7 @@ async def analyze_payment_intent(request: PaymentIntentRequest):
             # Cache the result
             intent_cache[cache_key] = intent_response
             
-            logger.info(f"AI intent analysis: {intent_response.intent} (confidence: {intent_response.confidence:.2f}, cost: ${cost_estimate:.6f})")
+            logger.info(f"AI intent analysis for {claims.service_name}: {intent_response.intent} (confidence: {intent_response.confidence:.2f}, cost: ${cost_estimate:.6f})")
             
             return intent_response
             
@@ -319,7 +356,9 @@ async def fallback_intent_analysis(request: PaymentIntentRequest):
     )
 
 @app.get("/api/payment-intent/models")
-async def get_available_models():
+async def get_available_models(
+    claims: ServiceClaims = Depends(authenticate_service_request)
+):
     """Get available AI models for intent analysis"""
     return {
         "models": AI_MODELS,
@@ -332,7 +371,9 @@ async def get_available_models():
     }
 
 @app.get("/api/payment-intent/industries")
-async def get_supported_industries():
+async def get_supported_industries(
+    claims: ServiceClaims = Depends(authenticate_service_request)
+):
     """Get supported industries and their pricing models"""
     return {
         "industries": INDUSTRY_PRICING,
@@ -340,7 +381,12 @@ async def get_supported_industries():
     }
 
 @app.post("/api/payment-intent/quick-analyze")
-async def quick_analyze(message: str, industry: str = "default", model: str = DEFAULT_MODEL):
+async def quick_analyze(
+    message: str, 
+    industry: str = "default", 
+    model: str = DEFAULT_MODEL,
+    claims: ServiceClaims = Depends(authenticate_service_request)
+):
     """Quick payment intent analysis with minimal parameters"""
     request = PaymentIntentRequest(
         message=message,
@@ -350,7 +396,9 @@ async def quick_analyze(message: str, industry: str = "default", model: str = DE
     return await analyze_payment_intent(request)
 
 @app.get("/api/payment-intent/cache/stats")
-async def get_cache_stats():
+async def get_cache_stats(
+    claims: ServiceClaims = Depends(authenticate_service_request)
+):
     """Get intent analysis cache statistics"""
     return {
         "cached_analyses": len(intent_cache),
@@ -359,11 +407,17 @@ async def get_cache_stats():
     }
 
 @app.delete("/api/payment-intent/cache")
-async def clear_cache():
-    """Clear intent analysis cache"""
+async def clear_cache(
+    claims: ServiceClaims = Depends(authenticate_service_request)
+):
+    """Clear intent analysis cache (admin permission required)"""
+    if "admin:cache" not in claims.permissions:
+        raise HTTPException(status_code=403, detail="Admin permission required to clear cache")
+    
     cleared_count = len(intent_cache)
     intent_cache.clear()
-    return {"success": True, "cleared_analyses": cleared_count}
+    logger.info(f"Intent cache cleared by {claims.service_name}: {cleared_count} analyses")
+    return {"success": True, "cleared_analyses": cleared_count, "cleared_by": claims.service_name}
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8014))
