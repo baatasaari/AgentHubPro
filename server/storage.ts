@@ -10,6 +10,7 @@ import {
 } from "@shared/schema";
 import { BigQuery } from '@google-cloud/bigquery';
 import config from './config.js';
+// Note: PersistentStorage will replace MemStorage for production deployments
 
 export interface IStorage {
   // Organization operations
@@ -1057,4 +1058,23 @@ export class BigQueryStorage implements IStorage {
 }
 
 // Use MemStorage for development
-export const storage = new MemStorage();
+// Storage factory - automatically selects persistent storage in production
+function createStorage(): IStorage {
+  // Check for production environment variables
+  if (process.env.DATABASE_URL || process.env.GOOGLE_CLOUD_PROJECT) {
+    try {
+      // Dynamic import to avoid circular dependencies
+      const { persistentStorage } = require('./persistent-storage.js');
+      console.log('🗄️  Using PersistentStorage (Production Mode)');
+      return persistentStorage;
+    } catch (error) {
+      console.warn('⚠️  PersistentStorage failed to initialize, falling back to MemStorage:', error);
+    }
+  }
+  
+  console.log('🗄️  Using MemStorage (Development Mode)');
+  return new MemStorage();
+}
+
+// Create the global storage instance with automatic production/development detection
+export const storage = createStorage();
