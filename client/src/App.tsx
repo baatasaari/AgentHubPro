@@ -20,6 +20,7 @@ import ConversationalPaymentDemo from "@/pages/conversational-payment-demo";
 import Conversations from "@/pages/conversations";
 import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
+import RBACTest from "@/pages/rbac-test";
 
 interface User {
   id: number;
@@ -118,7 +119,10 @@ function Router() {
         
         {/* Owner-only routes */}
         {hasOwnerAccess && (
-          <Route path="/user-management" component={UserManagement} />
+          <>
+            <Route path="/user-management" component={UserManagement} />
+            <Route path="/rbac-test" component={RBACTest} />
+          </>
         )}
         
         <Route component={NotFound} />

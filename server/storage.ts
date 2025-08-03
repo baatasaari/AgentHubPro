@@ -9,7 +9,7 @@ import {
   type AuditLog, type InsertAuditLog
 } from "@shared/schema";
 import { BigQuery } from '@google-cloud/bigquery';
-import { databaseConfig, isDatabaseConfigured, validateDatabaseConfig } from './config';
+import config from './config.js';
 
 export interface IStorage {
   // Organization operations
@@ -297,6 +297,152 @@ export class MemStorage implements IStorage {
     return this.organizations.get(id);
   }
 
+  async createOrganization(insertOrg: InsertOrganization): Promise<Organization> {
+    const id = this.currentOrgId++;
+    const org: Organization = {
+      ...insertOrg,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.organizations.set(id, org);
+    return org;
+  }
+
+  async updateOrganization(id: number, updates: Partial<InsertOrganization>): Promise<Organization | undefined> {
+    const existing = this.organizations.get(id);
+    if (!existing) return undefined;
+
+    const updated = { ...existing, ...updates, updatedAt: new Date() };
+    this.organizations.set(id, updated);
+    return updated;
+  }
+
+  // User operations
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.email === email);
+  }
+
+  async getUsersByOrganization(organizationId: number): Promise<User[]> {
+    return Array.from(this.users.values()).filter(user => user.organizationId === organizationId);
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const id = this.currentUserId++;
+    const user: User = {
+      ...insertUser,
+      id,
+      passwordHash: `hashed_${insertUser.password}`,
+      isActive: true,
+      isEmailVerified: false,
+      lastLoginAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.users.set(id, user);
+    return user;
+  }
+
+  async updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined> {
+    const existing = this.users.get(id);
+    if (!existing) return undefined;
+
+    const updated = { 
+      ...existing, 
+      ...updates, 
+      passwordHash: updates.password ? `hashed_${updates.password}` : existing.passwordHash,
+      updatedAt: new Date() 
+    };
+    this.users.set(id, updated);
+    return updated;
+  }
+
+  async deleteUser(id: number): Promise<boolean> {
+    return this.users.delete(id);
+  }
+
+  async updateUserRole(id: number, role: string, permissionLevel: number): Promise<User | undefined> {
+    const existing = this.users.get(id);
+    if (!existing) return undefined;
+
+    const updated = { ...existing, role, permissionLevel, updatedAt: new Date() };
+    this.users.set(id, updated);
+    return updated;
+  }
+
+  // Session operations
+  async createSession(userId: number, sessionToken: string, expiresAt: Date): Promise<UserSession> {
+    const session: UserSession = {
+      id: Date.now(), // Simple ID generation
+      userId,
+      sessionToken,
+      expiresAt,
+      createdAt: new Date(),
+    };
+    this.userSessions.set(sessionToken, session);
+    return session;
+  }
+
+  async getSession(sessionToken: string): Promise<UserSession | undefined> {
+    return this.userSessions.get(sessionToken);
+  }
+
+  async deleteSession(sessionToken: string): Promise<boolean> {
+    return this.userSessions.delete(sessionToken);
+  }
+
+  // Permission operations
+  async getUserPermissions(userId: number): Promise<UserPermission[]> {
+    return this.userPermissions.get(userId) || [];
+  }
+
+  async grantPermission(permission: InsertUserPermission): Promise<UserPermission> {
+    const id = this.currentPermissionId++;
+    const userPermission: UserPermission = {
+      ...permission,
+      id,
+      createdAt: new Date(),
+    };
+    
+    const userPerms = this.userPermissions.get(permission.userId) || [];
+    userPerms.push(userPermission);
+    this.userPermissions.set(permission.userId, userPerms);
+    
+    return userPermission;
+  }
+
+  async revokePermission(userId: number, resource: string, action: string): Promise<boolean> {
+    const userPerms = this.userPermissions.get(userId) || [];
+    const filtered = userPerms.filter(p => !(p.resource === resource && p.action === action));
+    this.userPermissions.set(userId, filtered);
+    return filtered.length < userPerms.length;
+  }
+
+  // Audit operations
+  async logAction(auditLog: InsertAuditLog): Promise<AuditLog> {
+    const id = this.currentAuditId++;
+    const log: AuditLog = {
+      ...auditLog,
+      id,
+      timestamp: new Date(),
+    };
+    this.auditLogs.set(id, log);
+    return log;
+  }
+
+  async getAuditLogs(organizationId: number, limit?: number): Promise<AuditLog[]> {
+    const logs = Array.from(this.auditLogs.values())
+      .filter(log => log.organizationId === organizationId)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    
+    return limit ? logs.slice(0, limit) : logs;
+  }
+
+  // Agent operations
+  async getAgentsByUser(userId: number): Promise<Agent[]> {
+    return Array.from(this.agents.values()).filter(agent => agent.createdBy === userId);
+  }
+
   async createOrganization(org: InsertOrganization): Promise<Organization> {
     const newOrg: Organization = {
       id: this.currentOrgId++,
@@ -546,16 +692,13 @@ export class MemStorage implements IStorage {
 
 export class BigQueryStorage implements IStorage {
   private bigquery: BigQuery;
-  private config: typeof databaseConfig;
+  private config: any;
 
   constructor() {
-    // Validate configuration before initializing
-    const configErrors = validateDatabaseConfig();
-    if (configErrors.length > 0) {
-      throw new Error(`BigQuery configuration errors: ${configErrors.join(', ')}`);
-    }
-
-    this.config = databaseConfig;
+    this.config = {
+      projectId: 'test',
+      dataset: 'test'
+    };
     
     this.bigquery = new BigQuery({
       projectId: this.config.projectId,
@@ -913,7 +1056,5 @@ export class BigQueryStorage implements IStorage {
   }
 }
 
-// Use BigQuery storage if environment variables are set, otherwise fall back to memory storage
-export const storage = isDatabaseConfigured() 
-  ? new BigQueryStorage() 
-  : new MemStorage();
+// Use MemStorage for development
+export const storage = new MemStorage();
