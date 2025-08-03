@@ -17,10 +17,9 @@ app.use(express.json());
 const distPath = path.join(__dirname, '../dist/public');
 app.use(express.static(distPath));
 
-// Authentication routes
-import('./auth-routes.js').then(({ registerAuthRoutes }) => {
-  registerAuthRoutes(app);
-});
+// Authentication routes (synchronous import to ensure routes are registered)
+import { registerAuthRoutes } from './auth-routes.js';
+registerAuthRoutes(app);
 
 // Email reporting endpoints (must come before the catch-all /api/* middleware)
 app.post('/api/email/send-report', async (req, res) => {
