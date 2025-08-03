@@ -23,12 +23,19 @@ from auth_middleware import (
     ServiceClaims,
     get_secure_cors_middleware,
     security_metrics,
-    sanitize_input,
     require_permission
 )
+from security_utils import (
+    StructuredLogger,
+    RequestContext,
+    InputSanitizer,
+    SecureErrorHandler,
+    SecurityMonitor
+)
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Initialize structured logger and security monitor
+logger = StructuredLogger("payment-intent-service")
+security_monitor = SecurityMonitor()
 
 # Initialize OpenAI client
 if not os.getenv("OPENAI_API_KEY"):

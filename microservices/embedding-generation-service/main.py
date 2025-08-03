@@ -22,12 +22,20 @@ from auth_middleware import (
     ServiceClaims, 
     get_secure_cors_middleware,
     security_metrics,
-    sanitize_input,
     require_permission
 )
+from security_utils import (
+    StructuredLogger,
+    RequestContext,
+    InputSanitizer,
+    SecureErrorHandler,
+    SecureTextInput,
+    SecurityMonitor
+)
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Initialize structured logger and security monitor
+logger = StructuredLogger("embedding-generation-service")
+security_monitor = SecurityMonitor()
 
 # Initialize OpenAI client
 if not os.getenv("OPENAI_API_KEY"):
@@ -56,7 +64,25 @@ DEFAULT_MODEL = "text-embedding-3-small"
 class EmbeddingRequest(BaseModel):
     text: str
     model: str = DEFAULT_MODEL
-    dimensions: Optional[int] = None  # For custom dimension reduction
+    dimensions: Optional[int] = None
+    
+    def validate_and_sanitize(self) -> 'EmbeddingRequest':
+        """Validate and sanitize all inputs"""
+        try:
+            # Sanitize text input
+            self.text = InputSanitizer.sanitize_string(self.text, max_length=8192)
+            
+            # Validate model
+            if self.model not in EMBEDDING_MODELS:
+                raise ValueError(f"Unsupported model: {self.model}")
+            
+            # Validate dimensions if provided
+            if self.dimensions is not None:
+                self.dimensions = int(InputSanitizer.sanitize_numeric(self.dimensions, min_val=1, max_val=5000))
+            
+            return self
+        except Exception as e:
+            raise ValueError(f"Input validation failed: {str(e)}")  # For custom dimension reduction
     
 class EmbeddingResponse(BaseModel):
     embedding: List[float]
@@ -122,24 +148,19 @@ async def health_check(request: Request):
 @app.post("/api/embeddings/generate")
 async def generate_embedding(
     request: EmbeddingRequest,
+    http_request: Request,
     claims: ServiceClaims = Depends(authenticate_service_request)
 ):
-    """Generate real AI embedding using OpenAI with authentication"""
+    """Generate real AI embedding using OpenAI with secure error handling"""
+    request_context = RequestContext(http_request)
+    
     try:
         # Check permissions
         if "embedding:generate" not in claims.permissions:
-            raise HTTPException(status_code=403, detail="Insufficient permissions")
+            raise PermissionError("Insufficient permissions for embedding generation")
         
-        # Sanitize input
-        sanitized_text = sanitize_input(request.text, max_length=8192)
-        request.text = sanitized_text
-        
-        # Validate model
-        if request.model not in EMBEDDING_MODELS:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Unsupported model. Available: {list(EMBEDDING_MODELS.keys())}"
-            )
+        # Validate and sanitize input
+        request = request.validate_and_sanitize()
         
         # Create cache key
         text_hash = hashlib.sha256(request.text.encode()).hexdigest()
@@ -149,18 +170,23 @@ async def generate_embedding(
         if cache_key in embedding_cache:
             cached_response = embedding_cache[cache_key]
             cached_response.cache_hit = True
-            logger.info(f"Cache hit for {claims.service_name}, text length {len(request.text)}")
+            logger.info(
+                f"Cache hit for embedding request",
+                request_id=request_context.request_id,
+                service_name=claims.service_name,
+                text_length=len(request.text),
+                model=request.model
+            )
             security_metrics.record_successful_auth(claims.service_name, "cached")
             return cached_response
         
-        # Validate text input
-        if not request.text.strip():
-            raise HTTPException(status_code=400, detail="Text cannot be empty")
-        
-        if len(request.text) > 8192:  # OpenAI token limit
-            raise HTTPException(status_code=400, detail="Text too long (max 8192 tokens)")
-        
-        logger.info(f"Generating embedding for {claims.service_name}, text length {len(request.text)} using {request.model}")
+        logger.info(
+            f"Generating embedding",
+            request_id=request_context.request_id,
+            service_name=claims.service_name,
+            text_length=len(request.text),
+            model=request.model
+        )
         security_metrics.record_successful_auth(claims.service_name, "embedding_generation")
         
         # Generate real embedding using OpenAI
@@ -196,19 +222,31 @@ async def generate_embedding(
             
             return response
             
-        except openai.RateLimitError:
-            logger.error("OpenAI rate limit exceeded")
-            raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
-        
+        except openai.RateLimitError as e:
+            logger.error(
+                "OpenAI rate limit exceeded",
+                request_id=request_context.request_id,
+                error_details=str(e)
+            )
+            raise Exception("Rate limit exceeded")
         except openai.APIError as e:
-            logger.error(f"OpenAI API error: {e}")
-            raise HTTPException(status_code=503, detail=f"OpenAI API error: {str(e)}")
+            logger.error(
+                "OpenAI API error",
+                request_id=request_context.request_id,
+                error_details=str(e)
+            )
+            raise Exception("External service unavailable")
             
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Embedding generation failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+        # Record security event for suspicious errors
+        if security_monitor.is_suspicious_ip(request_context.client_ip):
+            security_monitor.record_failed_attempt(request_context.client_ip, request_context, logger)
+        
+        # Return secure error response
+        error_response, status_code = SecureErrorHandler.create_error_response(
+            e, request_context, logger, include_details=False
+        )
+        raise HTTPException(status_code=status_code, detail=error_response["error"]["message"])
 
 @app.post("/api/embeddings/batch")
 async def generate_batch_embeddings(
