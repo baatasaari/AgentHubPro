@@ -23,7 +23,9 @@ registerAuthRoutes(app);
 
 // Import validated routes to replace raw dict payload endpoints
 import validatedRoutes from './validated-routes.js';
+import validationDemo from './validation-demo.js';
 app.use('/api/v2', validatedRoutes); // Mount validated routes on v2 endpoint
+app.use('/api', validationDemo); // Mount validation demonstration endpoints
 
 // Email reporting endpoints (must come before the catch-all /api/* middleware)
 app.post('/api/email/send-report', async (req, res) => {
