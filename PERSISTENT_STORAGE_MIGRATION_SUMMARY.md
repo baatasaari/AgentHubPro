@@ -64,35 +64,35 @@ Multiple services store data in global dictionaries that are:
 
 **Startup Cost**: $75-150/month
 
-## **RECOMMENDED SOLUTION: PostgreSQL**
+## **RECOMMENDED SOLUTION: Google BigQuery**
 
-### Why PostgreSQL is Best for AgentHub Startup:
+### Why BigQuery is Best for AgentHub Startup:
 
-1. **Cost-Effective**: $25-50/month vs $100+ for alternatives
-2. **Launch Timeline**: 1-2 days migration vs weeks for complex solutions
-3. **Team Familiarity**: SQL skills readily available
-4. **Feature Rich**: JSON support for flexible schemas
-5. **Proven Scale**: Can handle millions of records
-6. **Easy Migration**: Current schemas map directly to tables
+1. **Cost-Effective**: $0-20/month for startup volumes vs $50+ for managed databases
+2. **Launch Timeline**: Hours setup with existing Google Cloud integration
+3. **Serverless**: No infrastructure management or maintenance overhead
+4. **Auto-Scaling**: Handles any load automatically without configuration
+5. **Analytics-First**: Perfect for data-heavy AgentHub operations
+6. **Easy Integration**: Already configured in the platform
 
-### PostgreSQL Implementation Strategy:
+### BigQuery Implementation Strategy:
 
-#### Phase 1: Core Business Data (Day 1-2)
-- **Agents Table**: Store agent configurations and metadata
-- **Users Table**: User management and authentication
-- **Organizations Table**: Multi-tenancy support
-- **Conversations Table**: Chat history and analytics
+#### Phase 1: Core Business Data (Day 1)
+- **Agents Dataset**: Store agent configurations and metadata with JSON columns
+- **Users Dataset**: User management with nested organization data
+- **Analytics Events**: Real-time event streaming with automatic partitioning
+- **Conversations**: Chat history with automatic clustering
 
-#### Phase 2: Analytics & Caching (Day 3-4)
-- **Analytics Events Table**: Event tracking with time-series indexing
-- **Payment Transactions Table**: Financial data with ACID compliance
-- **RAG Documents Table**: Knowledge base with full-text search
-- **Redis Layer**: Add Redis for hot caching (embeddings, sessions)
+#### Phase 2: Advanced Analytics (Day 2)
+- **Payment Transactions**: Financial data with automatic compliance
+- **RAG Documents**: Knowledge base with full-text search capabilities
+- **System Metrics**: Performance monitoring with time-series analysis
+- **Embeddings Storage**: Vector data with efficient querying
 
-#### Phase 3: Advanced Features (Week 2)
-- **Vector Storage**: PostgreSQL pgvector extension for embeddings
-- **Audit Logs**: Complete activity tracking
-- **Reporting Tables**: Materialized views for analytics
+#### Phase 3: Intelligence Layer (Day 3)
+- **Materialized Views**: Pre-computed analytics for dashboards
+- **ML Integration**: BigQuery ML for advanced insights
+- **Data Export**: APIs for real-time data access
 
 ## Implementation Plan
 
@@ -108,74 +108,80 @@ Multiple services store data in global dictionaries that are:
 3. **Validation**: Compare results to ensure data integrity
 4. **Cutover**: Remove memory storage once PostgreSQL validated
 
-### Database Schema Design:
+### BigQuery Schema Design:
 
 ```sql
--- Core Tables
-CREATE TABLE organizations (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+-- Core Datasets
+CREATE SCHEMA agenthub_production;
+
+CREATE TABLE agenthub_production.organizations (
+    id STRING NOT NULL,
+    name STRING NOT NULL,
+    settings JSON,
+    subscription_plan STRING DEFAULT 'trial',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
 );
 
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    organization_id INTEGER REFERENCES organizations(id),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    role VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+CREATE TABLE agenthub_production.agents (
+    id STRING NOT NULL,
+    organization_id STRING NOT NULL,
+    name STRING NOT NULL,
+    industry STRING,
+    configuration JSON,
+    status STRING DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+)
+PARTITION BY DATE(created_at)
+CLUSTER BY organization_id, status;
 
-CREATE TABLE agents (
-    id SERIAL PRIMARY KEY,
-    organization_id INTEGER REFERENCES organizations(id),
-    name VARCHAR(255) NOT NULL,
-    industry VARCHAR(100),
-    configuration JSONB,
-    status VARCHAR(50) DEFAULT 'active',
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
+CREATE TABLE agenthub_production.analytics_events (
+    id STRING NOT NULL,
+    organization_id STRING NOT NULL,
+    event_type STRING NOT NULL,
+    event_data JSON,
+    user_id STRING,
+    session_id STRING,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+)
+PARTITION BY DATE(created_at)
+CLUSTER BY organization_id, event_type;
 
--- Analytics Tables
-CREATE TABLE analytics_events (
-    id SERIAL PRIMARY KEY,
-    organization_id INTEGER REFERENCES organizations(id),
-    event_type VARCHAR(100) NOT NULL,
-    event_data JSONB,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+CREATE TABLE agenthub_production.payment_transactions (
+    id STRING NOT NULL,
+    organization_id STRING NOT NULL,
+    transaction_id STRING NOT NULL,
+    amount NUMERIC NOT NULL,
+    currency STRING DEFAULT 'USD',
+    status STRING NOT NULL,
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+)
+PARTITION BY DATE(created_at)
+CLUSTER BY organization_id, status;
 
--- Payment Tables  
-CREATE TABLE payment_transactions (
-    id SERIAL PRIMARY KEY,
-    organization_id INTEGER REFERENCES organizations(id),
-    amount DECIMAL(10,2) NOT NULL,
-    currency VARCHAR(3) DEFAULT 'USD',
-    status VARCHAR(50) NOT NULL,
-    metadata JSONB,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- RAG Tables
-CREATE TABLE rag_documents (
-    id SERIAL PRIMARY KEY,
-    organization_id INTEGER REFERENCES organizations(id),
-    title VARCHAR(500) NOT NULL,
-    content TEXT NOT NULL,
-    embeddings VECTOR(1536), -- pgvector extension
-    created_at TIMESTAMP DEFAULT NOW()
-);
+CREATE TABLE agenthub_production.rag_documents (
+    id STRING NOT NULL,
+    organization_id STRING NOT NULL,
+    title STRING NOT NULL,
+    content STRING NOT NULL,
+    embeddings ARRAY<FLOAT64>, -- Vector embeddings
+    category STRING DEFAULT 'general',
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+)
+PARTITION BY DATE(created_at)
+CLUSTER BY organization_id, category;
 ```
 
 ## Cost-Benefit Analysis
 
-### PostgreSQL Cost Breakdown:
-- **Database Instance**: $25-50/month (2 vCPU, 7.5GB RAM)
-- **Storage**: $0.17/GB/month (estimated 50GB = $8.50)
-- **Backup**: $0.08/GB/month (estimated 10GB = $0.80)
-- **Network**: Minimal for startup traffic
-- **Total**: ~$35-60/month
+### BigQuery Cost Breakdown:
+- **Storage**: $0.02/GB/month (estimated 50GB = $1.00)
+- **Queries**: $5/TB processed (estimated 100GB/month = $0.50)
+- **Streaming Inserts**: $0.01/200MB (estimated 10GB/month = $0.50)
+- **Network**: Free for most operations
+- **Total**: ~$2-10/month for startup volumes
 
 ### ROI Benefits:
 1. **Data Integrity**: Eliminates data loss risk (invaluable)
@@ -233,12 +239,12 @@ CREATE TABLE rag_documents (
 
 ## Conclusion
 
-**PostgreSQL is the optimal choice** for AgentHub's persistent storage needs because:
+**Google Cloud BigQuery is the optimal choice** for AgentHub's persistent storage needs because:
 
-1. **Startup-Friendly**: Low cost, fast implementation
-2. **Production-Ready**: ACID compliance, proven reliability  
-3. **Team-Ready**: SQL skills available, rich ecosystem
-4. **Future-Proof**: Scales to enterprise needs
-5. **Launch-Optimized**: 2-week migration timeline achievable
+1. **Startup-Friendly**: Ultra-low cost ($2-10/month), serverless implementation
+2. **Production-Ready**: Auto-scaling, Google-managed reliability  
+3. **Team-Ready**: SQL skills available, no infrastructure management
+4. **Future-Proof**: Handles petabyte-scale automatically
+5. **Launch-Optimized**: Hours setup, immediate analytics capabilities
 
-The migration from in-memory dictionaries to PostgreSQL will eliminate the critical production blocker while maintaining cost-effectiveness and meeting aggressive launch deadlines.
+The migration from in-memory dictionaries to BigQuery will eliminate the critical production blocker while providing the most cost-effective and scalable solution for aggressive launch deadlines.

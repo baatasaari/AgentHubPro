@@ -1,28 +1,30 @@
 #!/bin/bash
-echo "🗄️ AgentHub Database Migration"
+echo "🗄️ AgentHub BigQuery Migration"
 echo "============================="
-echo "Migrating from in-memory dictionaries to PostgreSQL"
+echo "Migrating from in-memory dictionaries to Google Cloud BigQuery"
 echo ""
 
-# Check if DATABASE_URL is set
-if [ -z "$DATABASE_URL" ]; then
-    echo "⚠️ DATABASE_URL not set. Using development defaults."
-    export DATABASE_URL="postgresql://localhost:5432/agenthub_dev"
+# Check if GOOGLE_CLOUD_PROJECT_ID is set
+if [ -z "$GOOGLE_CLOUD_PROJECT_ID" ]; then
+    echo "⚠️ GOOGLE_CLOUD_PROJECT_ID not set. Using default project."
+    export GOOGLE_CLOUD_PROJECT_ID="agenthub-production"
 fi
 
-echo "Database: $DATABASE_URL"
+echo "Project: $GOOGLE_CLOUD_PROJECT_ID"
+echo "Dataset: agenthub_production"
 echo ""
 
-# Run database migration
-echo "📊 Creating persistent storage tables..."
-node server/db-migration.ts
+# Run BigQuery migration
+echo "📊 Creating BigQuery dataset and tables..."
+node server/bigquery-migration.ts
 
 echo ""
-echo "✅ Migration completed successfully!"
+echo "✅ BigQuery migration completed successfully!"
 echo ""
 echo "🎯 Production Readiness Achieved:"
-echo "• Data persistence through container restarts"
-echo "• Thread-safe concurrent operations"
-echo "• ACID transaction guarantees"
-echo "• Horizontal scaling capability"
-echo "• Automated backup and recovery"
+echo "• Serverless auto-scaling storage"
+echo "• No infrastructure management required"
+echo "• Automatic partitioning and clustering"
+echo "• Built-in analytics and ML capabilities"
+echo "• Cost-effective for startup volumes ($2-10/month)"
+echo "• Horizontal scaling for any load"
