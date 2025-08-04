@@ -76,7 +76,7 @@ export default function WidgetCustomizer({ agentId, onUpdate }: WidgetCustomizer
     };
     
     var script = document.createElement('script');
-    script.src = `${import.meta.env.VITE_WIDGET_CDN_URL || 'https://cdn.agenthub.com'}/widget.js`;
+    script.src = (import.meta.env.VITE_WIDGET_CDN_URL || 'https://cdn.agenthub.com') + '/widget.js';
     script.onload = function() {
         if (typeof AgentHub !== 'undefined') {
             AgentHub.init(agentConfig);

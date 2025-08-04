@@ -5,9 +5,17 @@ import { cn } from '@/lib/utils';
 interface MainLayoutProps {
   children: React.ReactNode;
   className?: string;
+  user?: {
+    id: number;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+  };
+  onLogout?: () => void;
 }
 
-function MainLayoutContent({ children, className }: MainLayoutProps) {
+function MainLayoutContent({ children, className, user, onLogout }: MainLayoutProps) {
   const { isCollapsed } = useSidebar();
   
   return (
@@ -46,10 +54,10 @@ function MainLayoutContent({ children, className }: MainLayoutProps) {
   );
 }
 
-export function MainLayout({ children, className }: MainLayoutProps) {
+export function MainLayout({ children, className, user, onLogout }: MainLayoutProps) {
   return (
     <SidebarProvider>
-      <MainLayoutContent className={className}>
+      <MainLayoutContent className={className} user={user} onLogout={onLogout}>
         {children}
       </MainLayoutContent>
     </SidebarProvider>

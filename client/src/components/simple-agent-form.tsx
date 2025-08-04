@@ -35,12 +35,6 @@ interface SimpleAgentFormProps {
   onCancel?: () => void;
 }
 
-export default function AgentForm({ onSuccess, onCancel }: SimpleAgentFormProps) {
-  return <SimpleAgentForm onSuccess={onSuccess} onCancel={onCancel} />;
-}
-
-export { AgentForm };
-
 export function SimpleAgentForm({ onSuccess, onCancel }: SimpleAgentFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
