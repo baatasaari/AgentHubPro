@@ -7,7 +7,7 @@
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import * as schema from '../shared/schema';
-import { eq, and, desc, asc } from 'drizzle-orm';
+import { eq, and, desc, asc, sql } from 'drizzle-orm';
 
 export class PersistentStorage {
   private pool: Pool;
@@ -464,4 +464,3 @@ export class PersistentStorage {
 // Export singleton instance
 const persistentStorage = new PersistentStorage();
 export default persistentStorage;
-export { PersistentStorage };
