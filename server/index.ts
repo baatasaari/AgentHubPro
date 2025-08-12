@@ -196,6 +196,178 @@ app.use('/api', express.json({
   }
 }));
 
+// Conversational Payment Testing Routes
+const DUMMY_PAYMENT_DATA = {
+  products: [
+    { id: 'consultation', name: 'Business Consultation', price: 150, currency: 'USD' },
+    { id: 'premium_support', name: 'Premium Support Package', price: 299, currency: 'USD' },
+    { id: 'custom_agent', name: 'Custom Agent Development', price: 500, currency: 'USD' },
+    { id: 'monthly_subscription', name: 'Monthly AI Assistant', price: 49, currency: 'USD' },
+  ]
+};
+
+const paymentConversations = new Map();
+
+// Simulate payment processing
+function simulatePaymentProcessing(amount, currency = 'USD') {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const success = Math.random() > 0.1; // 90% success rate
+      resolve({
+        success,
+        transactionId: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        amount,
+        currency,
+        status: success ? 'completed' : 'failed',
+        timestamp: new Date().toISOString(),
+        error: success ? null : 'Payment declined by bank'
+      });
+    }, 1500);
+  });
+}
+
+// Payment API Routes
+app.get('/api/payment/products', (req, res) => {
+  res.json(DUMMY_PAYMENT_DATA.products);
+});
+
+app.post('/api/payment/process', async (req, res) => {
+  try {
+    const { amount, currency = 'USD' } = req.body;
+    if (!amount) {
+      return res.status(400).json({ error: 'amount is required' });
+    }
+    const result = await simulatePaymentProcessing(amount, currency);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/payment/conversation/start', async (req, res) => {
+  try {
+    const { sessionId, productId } = req.body;
+    if (!sessionId || !productId) {
+      return res.status(400).json({ error: 'sessionId and productId are required' });
+    }
+
+    const product = DUMMY_PAYMENT_DATA.products.find(p => p.id === productId);
+    if (!product) {
+      return res.status(400).json({ error: 'Product not found' });
+    }
+
+    const conversation = {
+      sessionId,
+      product,
+      stage: 'product_confirmation',
+      customerInfo: null,
+      paymentMethod: null,
+      timestamp: new Date().toISOString()
+    };
+
+    paymentConversations.set(sessionId, conversation);
+    
+    res.json({
+      message: `I'd be happy to help you with ${product.name} for $${product.price}. Would you like to proceed with this purchase?`,
+      options: ['Yes, proceed', 'Tell me more', 'Cancel'],
+      stage: 'product_confirmation'
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/payment/conversation/respond', async (req, res) => {
+  try {
+    const { sessionId, response } = req.body;
+    if (!sessionId || !response) {
+      return res.status(400).json({ error: 'sessionId and response are required' });
+    }
+
+    const conversation = paymentConversations.get(sessionId);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    let result;
+    switch (conversation.stage) {
+      case 'product_confirmation':
+        if (response.toLowerCase().includes('yes') || response.toLowerCase().includes('proceed')) {
+          conversation.stage = 'customer_info';
+          result = {
+            message: "Great! I'll need some information to process your order. What's your email address?",
+            stage: 'customer_info'
+          };
+        } else if (response.toLowerCase().includes('more')) {
+          result = {
+            message: `${conversation.product.name} - This service includes comprehensive support and consultation. The price is $${conversation.product.price}. Would you like to proceed?`,
+            options: ['Yes, proceed', 'Cancel'],
+            stage: 'product_confirmation'
+          };
+        } else {
+          result = {
+            message: "No problem! Feel free to ask if you have any other questions.",
+            stage: 'cancelled'
+          };
+        }
+        break;
+
+      case 'customer_info':
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(response)) {
+          conversation.customerInfo = { email: response };
+          conversation.stage = 'payment_method';
+          result = {
+            message: "Perfect! How would you like to pay? I can process credit card or bank transfer.",
+            options: ['Credit Card', 'Bank Transfer'],
+            stage: 'payment_method'
+          };
+        } else {
+          result = {
+            message: "Please provide a valid email address:",
+            stage: 'customer_info'
+          };
+        }
+        break;
+
+      case 'payment_method':
+        const method = response.toLowerCase().includes('card') ? 'card' : 'bank_transfer';
+        conversation.paymentMethod = method;
+        conversation.stage = 'payment_processing';
+        
+        const paymentResult = await simulatePaymentProcessing(conversation.product.price, conversation.product.currency);
+        
+        if (paymentResult.success) {
+          result = {
+            message: `Payment successful! Your ${conversation.product.name} has been confirmed. Transaction ID: ${paymentResult.transactionId}. You'll receive a confirmation email shortly.`,
+            stage: 'completed',
+            transactionId: paymentResult.transactionId
+          };
+        } else {
+          result = {
+            message: `Payment failed: ${paymentResult.error}. Would you like to try a different payment method?`,
+            options: ['Try again', 'Different method', 'Cancel'],
+            stage: 'payment_failed'
+          };
+        }
+        break;
+
+      default:
+        result = {
+          message: "I'm not sure how to help with that. Would you like to start over?",
+          stage: 'error'
+        };
+    }
+
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.get('/api/payment/conversations', (req, res) => {
+  res.json(Array.from(paymentConversations.values()));
+});
+
 // Content-Type validation middleware
 app.use('/api', (req, res, next) => {
   if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
@@ -452,3 +624,11 @@ server.listen(config.server.port, config.server.host, () => {
   console.log(`🌐 Frontend: ${config.api.baseUrl}`);
   console.log(`📊 Health: ${config.api.baseUrl}/health`);
 });
+// Payment testing routes
+import('./conversational-payment-test.js').then(({ setupConversationalPaymentRoutes }) => {
+  setupConversationalPaymentRoutes(app);
+  console.log('💳 Conversational payment testing routes enabled');
+}).catch(err => {
+  console.warn('⚠️ Could not load conversational payment routes:', err.message);
+});
+

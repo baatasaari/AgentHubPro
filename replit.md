@@ -8,6 +8,13 @@ AgentHub is a SaaS platform for creating, customizing, and deploying industry-sp
 - Platform access: Internal team only - NO customer access to platform
 - Access control: Owner-only full control, strict permission management for internal team
 - DevOps access: Infrastructure and codebase access as needed
+- Testing Focus: Conversational agents with payment systems using dummy data
+
+## Recent Changes
+- **August 12, 2025**: Implemented comprehensive conversational payment system with dummy data
+- **Conversational Payment Features**: Multi-step payment flows, email validation, payment method selection
+- **Payment Products**: Business Consultation ($150), Premium Support ($299), Custom Agent Development ($500), Monthly AI Assistant ($49)
+- **Testing Status**: All payment flows validated and working with realistic processing delays
 
 ## System Architecture
 
