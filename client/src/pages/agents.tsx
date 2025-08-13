@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Search, Bot, Star, Users, Zap } from "lucide-react";
 import type { Agent } from "@shared/schema";
+import AgentForm from "@/components/agent-form";
 
 const INDUSTRIES = [
   { value: "healthcare", label: "Healthcare" },
@@ -24,6 +26,7 @@ const INDUSTRIES = [
 export default function Agents() {
   const [searchTerm, setSearchTerm] = useState("");
   const [industryFilter, setIndustryFilter] = useState<string>("all");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const { data: agents = [], isLoading } = useQuery<Agent[]>({
     queryKey: ["/api/agents"],
@@ -104,10 +107,23 @@ export default function Agents() {
             Discover and browse pre-built AI agents for your business
           </p>
         </div>
-        <Button>
-          <Bot className="h-4 w-4 mr-2" />
-          Create Custom Agent
-        </Button>
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Bot className="h-4 w-4 mr-2" />
+              Create Custom Agent
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create Custom Agent</DialogTitle>
+            </DialogHeader>
+            <AgentForm 
+              onSuccess={() => setCreateDialogOpen(false)}
+              onCancel={() => setCreateDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Search and Filters */}
@@ -212,7 +228,7 @@ export default function Agents() {
               </p>
               <div className="flex justify-center space-x-2">
                 <Button variant="outline">Browse Marketplace</Button>
-                <Button>
+                <Button onClick={() => setCreateDialogOpen(true)}>
                   <Bot className="h-4 w-4 mr-2" />
                   Create Agent
                 </Button>

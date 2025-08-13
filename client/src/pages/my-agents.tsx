@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Play, Pause, Bot, Search, TrendingUp, Settings, Eye, MessageSquare, DollarSign, Database, FileText, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import RAGConfiguration from '@/components/rag-configuration';
+import AgentForm from '@/components/agent-form';
 import type { Agent } from "@shared/schema";
 
 export default function MyAgents() {
@@ -17,6 +18,7 @@ export default function MyAgents() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [ragDialogOpen, setRagDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -99,10 +101,26 @@ export default function MyAgents() {
             Manage and monitor all your AI agents
           </p>
         </div>
-        <Button>
-          <Bot className="h-4 w-4 mr-2" />
-          Create New Agent
-        </Button>
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Bot className="h-4 w-4 mr-2" />
+              Create New Agent
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create New Agent</DialogTitle>
+            </DialogHeader>
+            <AgentForm 
+              onSuccess={() => {
+                setCreateDialogOpen(false);
+                queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
+              }}
+              onCancel={() => setCreateDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Dashboard Overview */}
@@ -194,7 +212,7 @@ export default function MyAgents() {
                     : "Create your first AI agent to get started"
                   }
                 </p>
-                <Button>
+                <Button onClick={() => setCreateDialogOpen(true)}>
                   <Bot className="h-4 w-4 mr-2" />
                   Create Your First Agent
                 </Button>
