@@ -196,48 +196,99 @@ app.use('/api', express.json({
   }
 }));
 
-// Conversational Payment Testing Routes
-const DUMMY_PAYMENT_DATA = {
+// Indian Market Payment System - INR Only
+const INDIAN_PAYMENT_DATA = {
   products: [
-    { id: 'consultation', name: 'Business Consultation', price: 150, currency: 'USD' },
-    { id: 'premium_support', name: 'Premium Support Package', price: 299, currency: 'USD' },
-    { id: 'custom_agent', name: 'Custom Agent Development', price: 500, currency: 'USD' },
-    { id: 'monthly_subscription', name: 'Monthly AI Assistant', price: 49, currency: 'USD' },
+    { id: 'consultation', name: 'Business Consultation', price: 12500, currency: 'INR' },
+    { id: 'premium_support', name: 'Premium Support Package', price: 24900, currency: 'INR' },
+    { id: 'custom_agent', name: 'Custom Agent Development', price: 41600, currency: 'INR' },
+    { id: 'monthly_subscription', name: 'Monthly AI Assistant', price: 4100, currency: 'INR' },
+  ],
+  paymentMethods: [
+    { id: 'phonepe', name: 'PhonePe', type: 'upi', icon: 'phonepe', popular: true },
+    { id: 'googlepay', name: 'Google Pay', type: 'upi', icon: 'googlepay', popular: true },
+    { id: 'paytm', name: 'Paytm', type: 'wallet', icon: 'paytm', popular: true },
+    { id: 'razorpay_upi', name: 'UPI (Any App)', type: 'upi', icon: 'upi', popular: true },
+    { id: 'netbanking', name: 'Net Banking', type: 'netbanking', icon: 'bank', popular: false },
+    { id: 'card', name: 'Credit/Debit Card', type: 'card', icon: 'card', popular: false },
+    { id: 'wallet', name: 'Other Wallets', type: 'wallet', icon: 'wallet', popular: false }
+  ],
+  supportedBanks: [
+    'State Bank of India', 'HDFC Bank', 'ICICI Bank', 'Axis Bank', 'Punjab National Bank',
+    'Bank of Baroda', 'Canara Bank', 'Union Bank', 'Kotak Mahindra Bank', 'IndusInd Bank'
   ]
 };
 
 const paymentConversations = new Map();
 
-// Simulate payment processing
-function simulatePaymentProcessing(amount, currency = 'USD') {
+// Simulate Indian payment processing with local gateways
+function simulateIndianPaymentProcessing(amount, currency = 'INR', paymentMethod = 'upi') {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const success = Math.random() > 0.1; // 90% success rate
+      const success = Math.random() > 0.05; // 95% success rate for Indian payments
+      const gatewayResponses = {
+        phonepe: { gateway: 'PhonePe', merchantId: 'PGTESTPAYUAT', merchantTransactionId: `MT${Date.now()}` },
+        googlepay: { gateway: 'Google Pay', merchantId: 'BCR2DN4T2Y5RXDID', merchantTransactionId: `GP${Date.now()}` },
+        paytm: { gateway: 'Paytm', merchantId: 'DIY12386817555501617', orderId: `ORDER_${Date.now()}` },
+        upi: { gateway: 'UPI Gateway', vpa: 'business@paytm', refId: `UPI${Date.now()}` },
+        netbanking: { gateway: 'Razorpay', bankRefNo: `BNK${Date.now()}`, bankCode: 'SBIN' },
+        card: { gateway: 'Razorpay', cardNetwork: 'VISA', last4: '4321', authCode: `AUTH${Date.now()}` }
+      };
+      
+      const gatewayInfo = gatewayResponses[paymentMethod] || gatewayResponses.upi;
+      
       resolve({
         success,
-        transactionId: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        transactionId: `INR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         amount,
         currency,
+        paymentMethod,
+        gateway: gatewayInfo.gateway,
+        gatewayTransactionId: gatewayInfo.merchantTransactionId || gatewayInfo.orderId || gatewayInfo.refId,
         status: success ? 'completed' : 'failed',
         timestamp: new Date().toISOString(),
-        error: success ? null : 'Payment declined by bank'
+        error: success ? null : getIndianPaymentError(paymentMethod),
+        additionalInfo: success ? gatewayInfo : null
       });
-    }, 1500);
+    }, Math.random() * 2000 + 1000); // 1-3 seconds realistic delay
   });
 }
 
-// Payment API Routes
+function getIndianPaymentError(paymentMethod) {
+  const errors = {
+    phonepe: 'PhonePe transaction declined - insufficient balance',
+    googlepay: 'Google Pay payment failed - try another UPI app',
+    paytm: 'Paytm wallet payment failed - please recharge wallet',
+    upi: 'UPI transaction failed - check UPI PIN',
+    netbanking: 'Net banking session timeout - please retry',
+    card: 'Card payment declined by issuing bank'
+  };
+  return errors[paymentMethod] || 'Payment failed - please try another method';
+}
+
+// Indian Payment API Routes
 app.get('/api/payment/products', (req, res) => {
-  res.json(DUMMY_PAYMENT_DATA.products);
+  res.json(INDIAN_PAYMENT_DATA.products);
+});
+
+app.get('/api/payment/methods', (req, res) => {
+  res.json(INDIAN_PAYMENT_DATA.paymentMethods);
+});
+
+app.get('/api/payment/banks', (req, res) => {
+  res.json(INDIAN_PAYMENT_DATA.supportedBanks);
 });
 
 app.post('/api/payment/process', async (req, res) => {
   try {
-    const { amount, currency = 'USD' } = req.body;
+    const { amount, currency = 'INR', paymentMethod = 'upi' } = req.body;
     if (!amount) {
       return res.status(400).json({ error: 'amount is required' });
     }
-    const result = await simulatePaymentProcessing(amount, currency);
+    if (currency !== 'INR') {
+      return res.status(400).json({ error: 'Only INR currency supported for Indian market' });
+    }
+    const result = await simulateIndianPaymentProcessing(amount, currency, paymentMethod);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -251,7 +302,7 @@ app.post('/api/payment/conversation/start', async (req, res) => {
       return res.status(400).json({ error: 'sessionId and productId are required' });
     }
 
-    const product = DUMMY_PAYMENT_DATA.products.find(p => p.id === productId);
+    const product = INDIAN_PAYMENT_DATA.products.find(p => p.id === productId);
     if (!product) {
       return res.status(400).json({ error: 'Product not found' });
     }
@@ -268,7 +319,7 @@ app.post('/api/payment/conversation/start', async (req, res) => {
     paymentConversations.set(sessionId, conversation);
     
     res.json({
-      message: `I'd be happy to help you with ${product.name} for $${product.price}. Would you like to proceed with this purchase?`,
+      message: `I'd be happy to help you with ${product.name} for ₹${product.price.toLocaleString('en-IN')}. Would you like to proceed with this purchase?`,
       options: ['Yes, proceed', 'Tell me more', 'Cancel'],
       stage: 'product_confirmation'
     });
@@ -300,7 +351,7 @@ app.post('/api/payment/conversation/respond', async (req, res) => {
           };
         } else if (response.toLowerCase().includes('more')) {
           result = {
-            message: `${conversation.product.name} - This service includes comprehensive support and consultation. The price is $${conversation.product.price}. Would you like to proceed?`,
+            message: `${conversation.product.name} - This service includes comprehensive support and consultation. The price is ₹${conversation.product.price.toLocaleString('en-IN')}. Would you like to proceed?`,
             options: ['Yes, proceed', 'Cancel'],
             stage: 'product_confirmation'
           };
@@ -317,8 +368,8 @@ app.post('/api/payment/conversation/respond', async (req, res) => {
           conversation.customerInfo = { email: response };
           conversation.stage = 'payment_method';
           result = {
-            message: "Perfect! How would you like to pay? I can process credit card or bank transfer.",
-            options: ['Credit Card', 'Bank Transfer'],
+            message: "Perfect! How would you like to pay? We support PhonePe, Google Pay, UPI, Net Banking, and Cards.",
+            options: ['PhonePe', 'Google Pay', 'UPI', 'Net Banking', 'Credit/Debit Card'],
             stage: 'payment_method'
           };
         } else {
@@ -330,22 +381,34 @@ app.post('/api/payment/conversation/respond', async (req, res) => {
         break;
 
       case 'payment_method':
-        const method = response.toLowerCase().includes('card') ? 'card' : 'bank_transfer';
+        let method = 'upi';
+        if (response.toLowerCase().includes('phonepe')) method = 'phonepe';
+        else if (response.toLowerCase().includes('google pay')) method = 'googlepay';
+        else if (response.toLowerCase().includes('paytm')) method = 'paytm';
+        else if (response.toLowerCase().includes('net banking')) method = 'netbanking';
+        else if (response.toLowerCase().includes('card')) method = 'card';
+        
         conversation.paymentMethod = method;
         conversation.stage = 'payment_processing';
         
-        const paymentResult = await simulatePaymentProcessing(conversation.product.price, conversation.product.currency);
+        const paymentResult = await simulateIndianPaymentProcessing(conversation.product.price, conversation.product.currency, method);
         
         if (paymentResult.success) {
           result = {
-            message: `Payment successful! Your ${conversation.product.name} has been confirmed. Transaction ID: ${paymentResult.transactionId}. You'll receive a confirmation email shortly.`,
+            message: `Payment successful! Your ${conversation.product.name} has been confirmed. 
+Transaction ID: ${paymentResult.transactionId}
+Gateway: ${paymentResult.gateway}
+Amount: ₹${paymentResult.amount.toLocaleString('en-IN')}
+You'll receive a confirmation email shortly.`,
             stage: 'completed',
-            transactionId: paymentResult.transactionId
+            transactionId: paymentResult.transactionId,
+            gateway: paymentResult.gateway,
+            amount: paymentResult.amount
           };
         } else {
           result = {
             message: `Payment failed: ${paymentResult.error}. Would you like to try a different payment method?`,
-            options: ['Try again', 'Different method', 'Cancel'],
+            options: ['PhonePe', 'Google Pay', 'UPI', 'Net Banking', 'Card', 'Cancel'],
             stage: 'payment_failed'
           };
         }

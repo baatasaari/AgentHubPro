@@ -11,10 +11,12 @@ AgentHub is a SaaS platform for creating, customizing, and deploying industry-sp
 - Testing Focus: Conversational agents with payment systems using dummy data
 
 ## Recent Changes
-- **August 12, 2025**: Implemented comprehensive conversational payment system with dummy data
-- **Conversational Payment Features**: Multi-step payment flows, email validation, payment method selection
-- **Payment Products**: Business Consultation ($150), Premium Support ($299), Custom Agent Development ($500), Monthly AI Assistant ($49)
-- **Testing Status**: All payment flows validated and working with realistic processing delays
+- **August 13, 2025**: Converted entire payment system to Indian market (INR only)
+- **Indian Payment Integration**: PhonePe, Google Pay, UPI, Paytm, Net Banking, and Card payments
+- **INR Product Pricing**: Business Consultation (₹12,500), Premium Support (₹24,900), Custom Agent Development (₹41,600), Monthly AI Assistant (₹4,100)
+- **Indian Market Features**: UPI support, Indian bank integration, local payment gateway simulation
+- **Currency Enforcement**: System now only accepts INR, rejects other currencies
+- **Testing Status**: All Indian payment flows validated with realistic processing delays
 
 ## System Architecture
 
