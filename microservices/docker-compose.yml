@@ -1,181 +1,630 @@
+# AgentHub 26 Microservices Architecture
+# Complete Docker Compose configuration for all services
+
 version: '3.8'
-
-services:
-  # Agent Wizard Service
-  agent-wizard:
-    build:
-      context: ./agent-wizard
-      dockerfile: Dockerfile
-    ports:
-      - "8001:8001"
-    environment:
-      - USE_BIGQUERY=false
-      - ENVIRONMENT=development
-    volumes:
-      - ./agent-wizard/config:/app/config
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - agenthub-network
-
-  # Analytics Service
-  analytics-service:
-    build:
-      context: ./analytics-service
-      dockerfile: Dockerfile
-    ports:
-      - "8002:8002"
-    environment:
-      - USE_BIGQUERY=false
-      - ENVIRONMENT=development
-    depends_on:
-      - agent-wizard
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - agenthub-network
-
-  # Billing Service
-  billing-service:
-    build:
-      context: ./billing-service
-      dockerfile: Dockerfile
-    ports:
-      - "8003:8003"
-    environment:
-      - USE_BIGQUERY=false
-      - ENVIRONMENT=development
-    depends_on:
-      - agent-wizard
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - agenthub-network
-
-  # Dashboard Service
-  dashboard-service:
-    build:
-      context: ./dashboard-service
-      dockerfile: Dockerfile
-    ports:
-      - "8004:8004"
-    environment:
-      - MY_AGENTS_URL=http://my-agents-service:8006
-      - ANALYTICS_URL=http://analytics-service:8002
-      - BILLING_URL=http://billing-service:8003
-      - INSIGHTS_URL=http://insights-service:8007
-      - WIDGET_URL=http://widget-service:8005
-      - ENVIRONMENT=development
-    depends_on:
-      - agent-wizard
-      - analytics-service
-      - billing-service
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - agenthub-network
-
-  # Widget Service
-  widget-service:
-    build:
-      context: ./widget-service
-      dockerfile: Dockerfile
-    ports:
-      - "8005:8005"
-    environment:
-      - ENVIRONMENT=development
-    depends_on:
-      - agent-wizard
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - agenthub-network
-
-  # My Agents Service
-  my-agents-service:
-    build:
-      context: ./my-agents-service
-      dockerfile: Dockerfile
-    ports:
-      - "8006:8006"
-    environment:
-      - AGENT_WIZARD_URL=http://agent-wizard:8001
-      - ANALYTICS_SERVICE_URL=http://analytics-service:8002
-      - BILLING_SERVICE_URL=http://billing-service:8003
-      - WIDGET_SERVICE_URL=http://widget-service:8005
-      - ENVIRONMENT=development
-    depends_on:
-      - agent-wizard
-      - analytics-service
-      - billing-service
-      - widget-service
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - agenthub-network
-
-  # Insights Service  
-  insights-service:
-    build:
-      context: ./insights-service
-      dockerfile: Dockerfile
-    ports:
-      - "8007:8007"
-    environment:
-      - GOOGLE_CLOUD_PROJECT_ID=agenthub-demo
-      - BIGQUERY_DATASET_ID=insights
-      - ENVIRONMENT=development
-    depends_on:
-      - agent-wizard
-      - my-agents-service
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8007/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - agenthub-network
-
-  # API Gateway (optional - using nginx for routing)
-  api-gateway:
-    image: nginx:alpine
-    ports:
-      - "8000:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - agent-wizard
-      - analytics-service
-      - billing-service
-      - dashboard-service
-      - widget-service
-      - my-agents-service
-      - insights-service
-    networks:
-      - agenthub-network
 
 networks:
   agenthub-network:
     driver: bridge
 
 volumes:
-  config-data:
-    driver: local
+  postgres_data:
+  redis_data:
+  mongodb_data:
+  minio_data:
+
+services:
+  # 1. API Gateway & Load Balancer
+  nginx-gateway:
+    image: nginx:alpine
+    container_name: agenthub-gateway
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 2. Service Discovery & Configuration
+  consul:
+    image: consul:latest
+    container_name: agenthub-consul
+    ports:
+      - "8500:8500"
+    command: agent -server -bootstrap-expect=1 -data-dir=/consul/data -config-dir=/consul/config -ui -client 0.0.0.0
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 3. User Authentication Service
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: agenthub-auth
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/agenthub_auth
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 4. User Management Service
+  user-management-service:
+    build:
+      context: ./services/user-management
+      dockerfile: Dockerfile
+    container_name: agenthub-user-mgmt
+    ports:
+      - "3002:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/agenthub_users
+      - AUTH_SERVICE_URL=http://auth-service:3000
+    depends_on:
+      - postgres
+      - auth-service
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 5. Organization Management Service
+  organization-service:
+    build:
+      context: ./services/organization
+      dockerfile: Dockerfile
+    container_name: agenthub-organization
+    ports:
+      - "3003:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/agenthub_orgs
+      - USER_SERVICE_URL=http://user-management-service:3000
+    depends_on:
+      - postgres
+      - user-management-service
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 6. Agent Creation Service
+  agent-creation-service:
+    build:
+      context: ./services/agent-creation
+      dockerfile: Dockerfile
+    container_name: agenthub-agent-creation
+    ports:
+      - "3004:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/agenthub_agents
+      - LLM_SERVICE_URL=http://llm-service:3000
+      - RAG_SERVICE_URL=http://rag-service:3000
+    depends_on:
+      - postgres
+      - llm-service
+      - rag-service
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 7. Agent Management Service
+  agent-management-service:
+    build:
+      context: ./services/agent-management
+      dockerfile: Dockerfile
+    container_name: agenthub-agent-mgmt
+    ports:
+      - "3005:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/agenthub_agents
+      - AGENT_CREATION_SERVICE_URL=http://agent-creation-service:3000
+    depends_on:
+      - postgres
+      - agent-creation-service
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 8. LLM Integration Service
+  llm-service:
+    build:
+      context: ./services/llm-integration
+      dockerfile: Dockerfile
+    container_name: agenthub-llm
+    ports:
+      - "3006:3000"
+    environment:
+      - NODE_ENV=production
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - AZURE_API_KEY=${AZURE_API_KEY}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 9. RAG (Knowledge Base) Service
+  rag-service:
+    build:
+      context: ./services/rag-knowledge
+      dockerfile: Dockerfile
+    container_name: agenthub-rag
+    ports:
+      - "3007:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/agenthub_rag
+      - VECTOR_DB_URL=http://qdrant:6333
+      - EMBEDDING_SERVICE_URL=http://embedding-service:3000
+      - FILE_STORAGE_URL=http://file-storage-service:3000
+    depends_on:
+      - postgres
+      - qdrant
+      - embedding-service
+      - file-storage-service
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 10. Embedding Service
+  embedding-service:
+    build:
+      context: ./services/embedding
+      dockerfile: Dockerfile
+    container_name: agenthub-embedding
+    ports:
+      - "3008:3000"
+    environment:
+      - NODE_ENV=production
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 11. File Storage Service
+  file-storage-service:
+    build:
+      context: ./services/file-storage
+      dockerfile: Dockerfile
+    container_name: agenthub-file-storage
+    ports:
+      - "3009:3000"
+    environment:
+      - NODE_ENV=production
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+    depends_on:
+      - minio
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 12. Conversation Service
+  conversation-service:
+    build:
+      context: ./services/conversation
+      dockerfile: Dockerfile
+    container_name: agenthub-conversation
+    ports:
+      - "3010:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/agenthub_conversations
+      - MONGODB_URL=mongodb://mongodb:27017/agenthub_conversations
+      - LLM_SERVICE_URL=http://llm-service:3000
+      - RAG_SERVICE_URL=http://rag-service:3000
+    depends_on:
+      - postgres
+      - mongodb
+      - llm-service
+      - rag-service
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 13. WhatsApp Integration Service
+  whatsapp-service:
+    build:
+      context: ./services/whatsapp-integration
+      dockerfile: Dockerfile
+    container_name: agenthub-whatsapp
+    ports:
+      - "3011:3000"
+    environment:
+      - NODE_ENV=production
+      - WHATSAPP_TOKEN=${WHATSAPP_TOKEN}
+      - WHATSAPP_PHONE_ID=${WHATSAPP_PHONE_ID}
+      - WEBHOOK_VERIFY_TOKEN=${WEBHOOK_VERIFY_TOKEN}
+      - CONVERSATION_SERVICE_URL=http://conversation-service:3000
+    depends_on:
+      - conversation-service
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 14. Instagram Integration Service
+  instagram-service:
+    build:
+      context: ./services/instagram-integration
+      dockerfile: Dockerfile
+    container_name: agenthub-instagram
+    ports:
+      - "3012:3000"
+    environment:
+      - NODE_ENV=production
+      - INSTAGRAM_ACCESS_TOKEN=${INSTAGRAM_ACCESS_TOKEN}
+      - CONVERSATION_SERVICE_URL=http://conversation-service:3000
+    depends_on:
+      - conversation-service
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 15. Messenger Integration Service
+  messenger-service:
+    build:
+      context: ./services/messenger-integration
+      dockerfile: Dockerfile
+    container_name: agenthub-messenger
+    ports:
+      - "3013:3000"
+    environment:
+      - NODE_ENV=production
+      - FACEBOOK_PAGE_TOKEN=${FACEBOOK_PAGE_TOKEN}
+      - FACEBOOK_VERIFY_TOKEN=${FACEBOOK_VERIFY_TOKEN}
+      - CONVERSATION_SERVICE_URL=http://conversation-service:3000
+    depends_on:
+      - conversation-service
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 16. SMS Integration Service
+  sms-service:
+    build:
+      context: ./services/sms-integration
+      dockerfile: Dockerfile
+    container_name: agenthub-sms
+    ports:
+      - "3014:3000"
+    environment:
+      - NODE_ENV=production
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
+      - CONVERSATION_SERVICE_URL=http://conversation-service:3000
+    depends_on:
+      - conversation-service
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 17. Telegram Integration Service
+  telegram-service:
+    build:
+      context: ./services/telegram-integration
+      dockerfile: Dockerfile
+    container_name: agenthub-telegram
+    ports:
+      - "3015:3000"
+    environment:
+      - NODE_ENV=production
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - CONVERSATION_SERVICE_URL=http://conversation-service:3000
+    depends_on:
+      - conversation-service
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 18. Web Chat Service
+  webchat-service:
+    build:
+      context: ./services/webchat
+      dockerfile: Dockerfile
+    container_name: agenthub-webchat
+    ports:
+      - "3016:3000"
+    environment:
+      - NODE_ENV=production
+      - CONVERSATION_SERVICE_URL=http://conversation-service:3000
+      - WEBSOCKET_REDIS_URL=redis://redis:6379
+    depends_on:
+      - conversation-service
+      - redis
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 19. Payment Processing Service
+  payment-service:
+    build:
+      context: ./services/payment-processing
+      dockerfile: Dockerfile
+    container_name: agenthub-payment
+    ports:
+      - "3017:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/agenthub_payments
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}
+      - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}
+      - PHONEPE_MERCHANT_ID=${PHONEPE_MERCHANT_ID}
+      - PHONEPE_SALT_KEY=${PHONEPE_SALT_KEY}
+    depends_on:
+      - postgres
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 20. Billing Management Service
+  billing-service:
+    build:
+      context: ./services/billing
+      dockerfile: Dockerfile
+    container_name: agenthub-billing
+    ports:
+      - "3018:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/agenthub_billing
+      - PAYMENT_SERVICE_URL=http://payment-service:3000
+      - USAGE_TRACKING_SERVICE_URL=http://usage-tracking-service:3000
+    depends_on:
+      - postgres
+      - payment-service
+      - usage-tracking-service
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 21. Usage Tracking Service
+  usage-tracking-service:
+    build:
+      context: ./services/usage-tracking
+      dockerfile: Dockerfile
+    container_name: agenthub-usage-tracking
+    ports:
+      - "3019:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/agenthub_usage
+      - BIGQUERY_PROJECT_ID=${BIGQUERY_PROJECT_ID}
+      - BIGQUERY_DATASET=${BIGQUERY_DATASET}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 22. Analytics Service
+  analytics-service:
+    build:
+      context: ./services/analytics
+      dockerfile: Dockerfile
+    container_name: agenthub-analytics
+    ports:
+      - "3020:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/agenthub_analytics
+      - BIGQUERY_PROJECT_ID=${BIGQUERY_PROJECT_ID}
+      - BIGQUERY_DATASET=${BIGQUERY_DATASET}
+      - USAGE_TRACKING_SERVICE_URL=http://usage-tracking-service:3000
+    depends_on:
+      - postgres
+      - usage-tracking-service
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 23. Notification Service
+  notification-service:
+    build:
+      context: ./services/notification
+      dockerfile: Dockerfile
+    container_name: agenthub-notification
+    ports:
+      - "3021:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/agenthub_notifications
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - GMAIL_EMAIL=${GMAIL_EMAIL}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+      - SMS_SERVICE_URL=http://sms-service:3000
+    depends_on:
+      - postgres
+      - sms-service
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 24. Audit & Logging Service
+  audit-service:
+    build:
+      context: ./services/audit-logging
+      dockerfile: Dockerfile
+    container_name: agenthub-audit
+    ports:
+      - "3022:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/agenthub_audit
+      - MONGODB_URL=mongodb://mongodb:27017/agenthub_audit_logs
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+    depends_on:
+      - postgres
+      - mongodb
+      - elasticsearch
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 25. Monitoring & Health Service
+  monitoring-service:
+    build:
+      context: ./services/monitoring
+      dockerfile: Dockerfile
+    container_name: agenthub-monitoring
+    ports:
+      - "3023:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/agenthub_monitoring
+      - PROMETHEUS_URL=http://prometheus:9090
+      - GRAFANA_URL=http://grafana:3000
+    depends_on:
+      - postgres
+      - prometheus
+      - grafana
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # 26. Orchestration Service
+  orchestration-service:
+    build:
+      context: ./services/orchestration
+      dockerfile: Dockerfile
+    container_name: agenthub-orchestration
+    ports:
+      - "3024:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/agenthub_orchestration
+      - CONSUL_URL=http://consul:8500
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - consul
+      - redis
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  # Infrastructure Services
+  postgres:
+    image: postgres:15-alpine
+    container_name: agenthub-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=agenthub
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: agenthub-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:6
+    container_name: agenthub-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: agenthub-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./qdrant/storage:/qdrant/storage
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: agenthub-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  elasticsearch:
+    image: elasticsearch:8.8.0
+    container_name: agenthub-elasticsearch
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    volumes:
+      - ./elasticsearch/data:/usr/share/elasticsearch/data
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: agenthub-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - agenthub-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: agenthub-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - ./grafana/data:/var/lib/grafana
+    networks:
+      - agenthub-network
+    restart: unless-stopped

@@ -1,369 +1,409 @@
-# AgentHub Microservices Architecture
+# AgentHub 26 Microservices Architecture
 
-A complete microservices-based implementation of the AgentHub platform using FastAPI, with each component running as an independent service.
+Complete microservices implementation for the AgentHub platform with 26 specialized services handling all aspects of AI agent creation, management, and deployment across multiple platforms.
 
 ## Architecture Overview
 
-The AgentHub platform is built using a microservices architecture with the following services:
+The AgentHub platform is built using a domain-driven microservices architecture with the following key principles:
 
-### 🤖 Agent Wizard Service (Port 8001)
-- **Purpose**: Agent creation, management, and system prompt generation
-- **Features**: Industry-specific prompts, LLM model selection, YAML configuration
-- **Storage**: BigQuery or in-memory
-- **Key Endpoints**: `/api/agents`, `/api/industries`, `/api/config`
+- **Service Independence**: Each service is independently deployable and scalable
+- **Domain Separation**: Services are organized by business domain and functionality
+- **API Gateway**: Single entry point for all client requests with load balancing
+- **Service Discovery**: Automatic service registration and discovery using Consul
+- **Event-Driven Communication**: Asynchronous messaging between services
+- **Data Isolation**: Each service manages its own database and data model
 
-### 📊 Analytics Service (Port 8002)
-- **Purpose**: Usage tracking, performance metrics, and reporting
-- **Features**: Conversation analytics, agent performance, industry insights
-- **Storage**: BigQuery or in-memory
-- **Key Endpoints**: `/api/conversations`, `/api/usage/stats`, `/api/analytics`
+## Microservices List
 
-### 💰 Billing Service (Port 8003)
-- **Purpose**: Cost tracking, billing, invoicing, and payments
-- **Features**: Usage-based billing, invoice generation, payment tracking
-- **Storage**: BigQuery or in-memory
-- **Key Endpoints**: `/api/billing`, `/api/invoices`, `/api/payments`
+### Core Platform Services (1-6)
+1. **API Gateway & Load Balancer** - NGINX-based request routing and load balancing
+2. **Service Discovery & Configuration** - Consul for service registration and configuration management
+3. **User Authentication Service** - JWT-based authentication and session management
+4. **User Management Service** - User profiles, permissions, and role management
+5. **Organization Management Service** - Multi-tenant organization and team management
+6. **Agent Creation Service** - AI agent creation wizard and template management
 
-### 📈 Dashboard Service (Port 8004)
-- **Purpose**: Data aggregation and dashboard functionality
-- **Features**: Real-time metrics, service orchestration, activity feeds
-- **Dependencies**: Calls other services for data aggregation
-- **Key Endpoints**: `/api/dashboard`, `/api/dashboard/summary`
+### AI & Intelligence Services (7-11)
+7. **Agent Management Service** - Agent lifecycle, status management, and configuration
+8. **LLM Integration Service** - Multi-provider LLM integration (OpenAI, Anthropic, Google, Azure)
+9. **RAG (Knowledge Base) Service** - Document processing and knowledge base management
+10. **Embedding Service** - Text embedding generation and vector operations
+11. **File Storage Service** - Document upload, processing, and management
 
-### 🎨 Widget Service (Port 8005)
-- **Purpose**: Widget customization and code generation
-- **Features**: Theme customization, embed code generation, templates
-- **Storage**: In-memory
-- **Key Endpoints**: `/api/widgets`, `/api/templates`, `/api/widgets/{id}/embed`
+### Communication Platform Services (12-18)
+12. **Conversation Service** - Core conversation handling and context management
+13. **WhatsApp Integration Service** - WhatsApp Business API integration
+14. **Instagram Integration Service** - Instagram messaging integration
+15. **Messenger Integration Service** - Facebook Messenger integration
+16. **SMS Integration Service** - SMS gateway integration (Twilio)
+17. **Telegram Integration Service** - Telegram Bot API integration
+18. **Web Chat Service** - WebSocket-based web chat integration
 
-### 🔧 My Agents Service (Port 8006)
-- **Purpose**: Comprehensive agent lifecycle management
-- **Features**: CRUD operations, enable/disable, status tracking, bulk operations
-- **Storage**: Cross-service coordination with metadata management
-- **Key Endpoints**: `/api/my-agents`, `/api/my-agents/{id}/status`, `/api/my-agents/bulk`
+### Business Services (19-22)
+19. **Payment Processing Service** - Multi-gateway payment processing (Stripe, Razorpay, PhonePe)
+20. **Billing Management Service** - Subscription management and invoice generation
+21. **Usage Tracking Service** - API usage, conversation metrics, and resource consumption
+22. **Analytics Service** - Business intelligence and performance analytics
 
-### 🌐 API Gateway (Port 8000)
-- **Purpose**: Request routing and load balancing
-- **Technology**: Nginx
-- **Features**: Service discovery, health checks, CORS handling
+### Platform Services (23-26)
+23. **Notification Service** - Email, SMS, and push notification management
+24. **Audit & Logging Service** - Comprehensive audit trails and log management
+25. **Monitoring & Health Service** - System health monitoring and alerting
+26. **Orchestration Service** - Workflow orchestration and cross-service coordination
+
+## Technology Stack
+
+### Core Technologies
+- **Runtime**: Node.js 20 with Express.js framework
+- **Databases**: PostgreSQL (primary), MongoDB (logs), Redis (cache)
+- **Message Queue**: Redis for pub/sub and job queues
+- **API Gateway**: NGINX with load balancing and rate limiting
+- **Service Discovery**: HashiCorp Consul
+- **Container Orchestration**: Docker and Docker Compose
+- **Monitoring**: Prometheus + Grafana
+- **Search & Analytics**: Elasticsearch
+- **Vector Database**: Qdrant for embeddings
+- **File Storage**: MinIO (S3-compatible)
+
+### External Integrations
+- **LLM Providers**: OpenAI, Anthropic, Google Vertex AI, Azure OpenAI
+- **Payment Gateways**: Stripe, Razorpay, PhonePe, Google Pay, UPI
+- **Messaging Platforms**: WhatsApp Business, Instagram, Messenger, Telegram
+- **SMS Providers**: Twilio, AWS SNS
+- **Email Services**: SendGrid, Gmail API
+- **Cloud Storage**: MinIO, AWS S3 (optional)
 
 ## Quick Start
 
 ### Prerequisites
-- Docker and Docker Compose
-- Python 3.11+ (for local development)
-- Google Cloud credentials (for BigQuery integration)
+- Docker and Docker Compose installed
+- Node.js 20+ (for development)
+- Git
+- At least 8GB RAM and 20GB storage
 
-### Development Setup
-
-1. **Start all services with Docker Compose**:
+### 1. Clone and Setup
 ```bash
-cd microservices
-docker-compose up --build
+git clone https://github.com/your-org/agenthub-microservices.git
+cd agenthub-microservices/microservices
+
+# Copy environment template
+cp .env.example .env
+
+# Update environment variables
+nano .env
 ```
 
-2. **Individual service development**:
+### 2. Deploy All Services
 ```bash
-# Agent Wizard Service
-cd microservices/agent-wizard
-pip install -r requirements.txt
-python main.py
+# Make deployment script executable
+chmod +x scripts/deploy.sh
 
-# Analytics Service
-cd microservices/analytics-service  
-pip install -r requirements.txt
-python main.py
+# Deploy to development environment
+./scripts/deploy.sh development
 
-# And so on for other services...
+# Or deploy to production
+./scripts/deploy.sh production
 ```
 
-### Service URLs
+### 3. Verify Deployment
+```bash
+# Check all services are running
+docker-compose ps
 
-- **API Gateway**: http://localhost:8000
-- **Agent Wizard**: http://localhost:8001
-- **Analytics**: http://localhost:8002
-- **Billing**: http://localhost:8003
-- **Dashboard**: http://localhost:8004
-- **Widget**: http://localhost:8005
-- **My Agents**: http://localhost:8006
+# Verify API Gateway
+curl http://localhost/health
+
+# Check service discovery
+curl http://localhost:8500/v1/catalog/services
+```
+
+### 4. Access Management Interfaces
+- **API Gateway**: http://localhost
+- **Consul UI**: http://localhost:8500
+- **Grafana Dashboards**: http://localhost:3000 (admin/admin123)
+- **Prometheus Metrics**: http://localhost:9090
+- **MinIO Console**: http://localhost:9001
+
+## Service Configuration
+
+### Environment Variables
+Each service requires specific environment variables. Key configurations include:
+
+```bash
+# Database connections
+DATABASE_URL=postgresql://postgres:password@postgres:5432/agenthub
+REDIS_URL=redis://redis:6379
+MONGODB_URL=mongodb://mongodb:27017/agenthub
+
+# External API keys
+OPENAI_API_KEY=your_openai_key
+ANTHROPIC_API_KEY=your_anthropic_key
+GOOGLE_API_KEY=your_google_key
+
+# Platform integrations
+WHATSAPP_TOKEN=your_whatsapp_token
+TELEGRAM_BOT_TOKEN=your_telegram_token
+TWILIO_ACCOUNT_SID=your_twilio_sid
+
+# Payment gateways
+STRIPE_SECRET_KEY=your_stripe_key
+RAZORPAY_KEY_ID=your_razorpay_id
+PHONEPE_MERCHANT_ID=your_phonepe_id
+
+# Security
+JWT_SECRET=your_jwt_secret_key
+SESSION_SECRET=your_session_secret
+```
+
+### Service Communication
+Services communicate via:
+- **HTTP REST APIs**: Synchronous service-to-service calls
+- **Redis Pub/Sub**: Asynchronous event-driven messaging
+- **Service Discovery**: Consul for dynamic service location
+- **API Gateway**: Centralized routing and load balancing
+
+## Development Workflow
+
+### 1. Local Development
+```bash
+# Start infrastructure services only
+docker-compose up -d postgres redis mongodb consul
+
+# Run specific service locally
+cd services/auth-service
+npm install
+npm run dev
+
+# Run tests
+npm test
+```
+
+### 2. Building Services
+```bash
+# Build single service
+cd services/agent-creation
+docker build -t agenthub-agent-creation .
+
+# Build all services
+./scripts/build-all.sh
+```
+
+### 3. Database Migrations
+```bash
+# Run migrations for specific service
+cd services/auth-service
+npm run migrate
+
+# Run all migrations
+./scripts/migrate-all.sh
+```
 
 ## API Documentation
 
-Each service provides OpenAPI documentation:
+### Core Endpoints
 
-- Agent Wizard: http://localhost:8001/docs
-- Analytics: http://localhost:8002/docs
-- Billing: http://localhost:8003/docs
-- Dashboard: http://localhost:8004/docs
-- Widget: http://localhost:8005/docs
-- My Agents: http://localhost:8006/docs
-
-## Service Communication
-
-### Inter-service Communication
-Services communicate via HTTP REST APIs:
-
-```python
-# Dashboard Service calling Analytics Service
-analytics_data = await call_service(
-    ANALYTICS_SERVICE_URL, 
-    "/api/usage/stats"
-)
-```
-
-### Service Discovery
-Services are configured with environment variables:
-- `AGENT_SERVICE_URL=http://agent-wizard:8001`
-- `ANALYTICS_SERVICE_URL=http://analytics-service:8002`
-- `BILLING_SERVICE_URL=http://billing-service:8003`
-
-## Data Flow
-
-### Agent Creation Flow
-1. **Agent Wizard**: Creates agent with industry-specific prompts
-2. **Analytics**: Begins tracking agent performance metrics
-3. **Billing**: Sets up cost tracking for the agent
-4. **Dashboard**: Aggregates data for real-time display
-
-### Conversation Flow
-1. **Widget**: User interacts with embedded widget
-2. **Agent Wizard**: Processes conversation with LLM
-3. **Analytics**: Records conversation metrics
-4. **Billing**: Tracks token usage and costs
-5. **Dashboard**: Updates real-time statistics
-
-## Configuration
-
-### Environment Variables
-
+#### Authentication
 ```bash
-# Storage Configuration
-USE_BIGQUERY=false                 # Enable BigQuery storage
-ENVIRONMENT=development            # Environment name
-
-# BigQuery Settings (when enabled)
-GOOGLE_CLOUD_PROJECT_ID=your-project
-BIGQUERY_DATASET_ID=agenthub_dev
-GOOGLE_SERVICE_ACCOUNT_KEY=base64-key
-
-# Service URLs (for Docker)
-AGENT_SERVICE_URL=http://agent-wizard:8001
-ANALYTICS_SERVICE_URL=http://analytics-service:8002
-BILLING_SERVICE_URL=http://billing-service:8003
+POST /api/auth/login
+POST /api/auth/register
+POST /api/auth/refresh
+POST /api/auth/logout
 ```
 
-### BigQuery Integration
-
-Each service supports BigQuery for production storage:
-
-1. **Setup Terraform Infrastructure**:
+#### Agent Management
 ```bash
-cd microservices/agent-wizard/terraform
-./setup.sh
+GET /api/agents
+POST /api/agents/create
+GET /api/agents/{id}
+PUT /api/agents/{id}
+DELETE /api/agents/{id}
 ```
 
-2. **Configure Environment**:
+#### Conversations
 ```bash
-export USE_BIGQUERY=true
-export GOOGLE_CLOUD_PROJECT_ID=your-project
-export GOOGLE_SERVICE_ACCOUNT_KEY=your-base64-key
+GET /api/conversations
+POST /api/conversations
+GET /api/conversations/{id}/messages
+POST /api/conversations/{id}/messages
 ```
 
-## Development Guidelines
-
-### Adding New Services
-
-1. **Create Service Directory**:
+#### Platform Integrations
 ```bash
-mkdir microservices/new-service
-cd microservices/new-service
+POST /api/whatsapp/webhook
+POST /api/telegram/webhook
+POST /api/messenger/webhook
+GET /api/webchat/connect
 ```
 
-2. **FastAPI Application**:
-```python
-from fastapi import FastAPI
+### API Gateway Routes
+All requests go through the NGINX API Gateway:
+- **Base URL**: `http://localhost` (development) or your domain (production)
+- **Rate Limiting**: Configured per endpoint type
+- **Load Balancing**: Automatic across service instances
+- **Health Checks**: Built-in service health monitoring
 
-app = FastAPI(
-    title="New Service",
-    description="Service description",
-    version="1.0.0"
-)
+## Monitoring & Observability
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "service": "new-service"}
-```
+### Metrics Collection
+- **Prometheus**: Collects metrics from all services
+- **Grafana**: Visualizes metrics with pre-built dashboards
+- **Custom Metrics**: Business-specific KPIs and performance indicators
 
-3. **Add to Docker Compose**:
-```yaml
-new-service:
-  build:
-    context: ./new-service
-  ports:
-    - "8006:8006"
-  networks:
-    - agenthub-network
-```
-
-### Service Standards
-
-- **Health Checks**: All services must provide `/health` endpoint
-- **Error Handling**: Use FastAPI HTTPException for errors
-- **Logging**: Use Python logging for debugging
-- **Validation**: Use Pydantic models for request/response validation
-- **Documentation**: Provide OpenAPI documentation
-
-### Testing Services
-
-```bash
-# Health check all services
-curl http://localhost:8001/health  # Agent Wizard
-curl http://localhost:8002/health  # Analytics
-curl http://localhost:8003/health  # Billing
-curl http://localhost:8004/health  # Dashboard
-curl http://localhost:8005/health  # Widget
-curl http://localhost:8006/health  # My Agents
-
-# Test via API Gateway
-curl http://localhost:8000/health
-
-# Test cross-service communication
-curl http://localhost:8004/api/dashboard/summary
-```
-
-## Deployment
-
-### Production Deployment
-
-1. **Container Registry**:
-```bash
-# Build and tag images
-docker build -t your-registry/agent-wizard:latest ./agent-wizard
-docker build -t your-registry/analytics-service:latest ./analytics-service
-# ... for all services
-
-# Push to registry
-docker push your-registry/agent-wizard:latest
-```
-
-2. **Kubernetes Deployment**:
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: agent-wizard
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: agent-wizard
-  template:
-    metadata:
-      labels:
-        app: agent-wizard
-    spec:
-      containers:
-      - name: agent-wizard
-        image: your-registry/agent-wizard:latest
-        ports:
-        - containerPort: 8001
-        env:
-        - name: USE_BIGQUERY
-          value: "true"
-```
-
-### Cloud Deployment Options
-
-- **Google Cloud Run**: Individual service deployment
-- **AWS ECS**: Container orchestration
-- **Azure Container Instances**: Serverless containers
-- **Kubernetes**: Full orchestration platform
-
-## Monitoring
+### Logging Strategy
+- **Structured Logging**: JSON format for easy parsing
+- **Centralized Logs**: Elasticsearch for log aggregation
+- **Log Levels**: Debug, Info, Warn, Error with appropriate filtering
+- **Audit Trails**: Complete user activity and system change tracking
 
 ### Health Monitoring
-```bash
-# Check all services
-docker-compose ps
+- **Service Health**: Individual service health endpoints
+- **Database Health**: Connection and query performance monitoring
+- **External Services**: API availability and response time tracking
+- **Resource Usage**: CPU, memory, and storage monitoring
 
-# Service logs
-docker-compose logs agent-wizard
-docker-compose logs analytics-service
-```
+## Security Features
 
-### Performance Monitoring
-- **Metrics**: Each service exposes performance metrics
-- **Logging**: Centralized logging with correlation IDs
-- **Tracing**: Service call tracing for debugging
+### Authentication & Authorization
+- **JWT Tokens**: Stateless authentication with refresh tokens
+- **Role-Based Access Control**: Granular permissions system
+- **Session Management**: Secure session handling with Redis
+- **Multi-Factor Authentication**: Optional 2FA support
 
-## Security
-
-### API Security
-- **CORS**: Configured for cross-origin requests
-- **Authentication**: Ready for JWT or API key implementation
-- **Rate Limiting**: Can be implemented at gateway level
+### Network Security
+- **API Rate Limiting**: Prevents abuse and ensures fair usage
+- **CORS Configuration**: Proper cross-origin request handling
+- **Security Headers**: HSTS, CSP, and other security headers
+- **Input Validation**: Comprehensive request validation
 
 ### Data Security
-- **BigQuery**: Encrypted at rest and in transit
-- **Service Communication**: Internal network isolation
-- **Environment Variables**: Secure secret management
+- **Encryption at Rest**: Database encryption for sensitive data
+- **Encryption in Transit**: TLS/SSL for all communications
+- **Secret Management**: Secure environment variable handling
+- **Data Isolation**: Multi-tenant data separation
 
-## Scaling
+## Scaling & Performance
 
 ### Horizontal Scaling
-```yaml
-# Scale specific services
-docker-compose up --scale agent-wizard=3 --scale analytics-service=2
+- **Service Instances**: Scale individual services based on load
+- **Database Sharding**: Partition data across multiple databases
+- **Load Balancing**: NGINX handles request distribution
+- **Auto-scaling**: Container orchestration with scaling policies
+
+### Performance Optimization
+- **Caching Strategy**: Redis for session and application caching
+- **Database Optimization**: Connection pooling and query optimization
+- **CDN Integration**: Static asset delivery optimization
+- **Compression**: GZIP compression for API responses
+
+### Resource Management
+- **Memory Limits**: Container memory restrictions
+- **CPU Limits**: Prevent resource starvation
+- **Disk Usage**: Monitoring and cleanup strategies
+- **Network Bandwidth**: Traffic shaping and prioritization
+
+## Deployment Strategies
+
+### Development Deployment
+```bash
+# Start all services locally
+docker-compose up -d
+
+# Or start specific services
+docker-compose up -d postgres redis auth-service agent-creation
 ```
 
-### Load Balancing
-- **Nginx**: Built-in load balancing
-- **Cloud Load Balancers**: For production deployment
-- **Service Mesh**: For advanced traffic management
+### Production Deployment
+```bash
+# Deploy to production environment
+./scripts/deploy.sh production
+
+# Or use Kubernetes (if available)
+kubectl apply -f k8s/
+```
+
+### CI/CD Pipeline
+1. **Code Commit**: Push to repository triggers pipeline
+2. **Build Phase**: Docker images built and tested
+3. **Test Phase**: Unit and integration tests executed
+4. **Deploy Phase**: Services deployed to staging/production
+5. **Monitoring**: Automated health checks and rollback if needed
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Service Connectivity**:
+#### Service Discovery Issues
 ```bash
-# Check network connectivity
-docker network ls
-docker network inspect microservices_agenthub-network
+# Check Consul health
+curl http://localhost:8500/v1/status/leader
+
+# Verify service registration
+curl http://localhost:8500/v1/catalog/services
 ```
 
-2. **Port Conflicts**:
+#### Database Connection Issues
 ```bash
-# Check port usage
-netstat -tulpn | grep 800
+# Check database connectivity
+docker-compose exec postgres psql -U postgres -c "SELECT 1"
+
+# Verify Redis connection
+docker-compose exec redis redis-cli ping
 ```
 
-3. **BigQuery Authentication**:
+#### Service Communication Issues
 ```bash
-# Verify credentials
-echo $GOOGLE_SERVICE_ACCOUNT_KEY | base64 -d | jq .
+# Check service logs
+docker-compose logs auth-service
+
+# Test service endpoint directly
+curl http://localhost:3001/health
 ```
 
-### Debugging Services
-
+### Performance Issues
 ```bash
-# Service logs
-docker-compose logs -f service-name
+# Monitor resource usage
+docker stats
 
-# Execute commands in container
-docker-compose exec agent-wizard bash
+# Check service metrics
+curl http://localhost:9090/metrics
 
-# Check service health
-curl http://localhost:8004/api/dashboard/status
+# Analyze slow queries
+docker-compose exec postgres pg_stat_statements
 ```
 
 ## Contributing
 
-1. **Fork Repository**: Create feature branch
-2. **Add Tests**: Include unit and integration tests
-3. **Update Documentation**: Maintain service documentation
-4. **Submit PR**: Include clear description of changes
+### Development Guidelines
+1. **Code Style**: Follow ESLint and Prettier configurations
+2. **Testing**: Maintain >80% test coverage
+3. **Documentation**: Update API docs for any changes
+4. **Security**: Run security scans before commits
+
+### Pull Request Process
+1. Create feature branch from main
+2. Implement changes with tests
+3. Update documentation
+4. Submit PR with detailed description
+5. Code review and approval required
+
+## Support & Maintenance
+
+### Regular Maintenance Tasks
+- **Database Backups**: Automated daily backups
+- **Log Rotation**: Prevent disk space issues
+- **Security Updates**: Regular dependency updates
+- **Performance Monitoring**: Weekly performance reviews
+
+### Support Channels
+- **Documentation**: Comprehensive API and deployment docs
+- **Issue Tracking**: GitHub issues for bug reports
+- **Team Communication**: Slack/Discord for real-time support
+- **Knowledge Base**: Internal wiki for troubleshooting
 
 ## License
 
-This project is part of the AgentHub platform. See main repository for license information.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+---
+
+**AgentHub Microservices Architecture** - Scalable, secure, and production-ready AI agent platform supporting 26 specialized microservices for enterprise-grade multi-platform AI agent deployment.
